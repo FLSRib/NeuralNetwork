@@ -5,21 +5,75 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mini-LLM Playground - Aprendizado Profundo de Linguagem</title>
 
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- FontAwesome Icons -->
+    <!-- FontAwesome Icons CDN -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- KaTeX Math Renderer -->
+    <!-- KaTeX Math Renderer CDN -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 
-    <!-- Chart.js -->
+    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Estilos Customizados -->
-    <link rel="stylesheet" href="css/styles.css">
+    <!-- Estilos Inline (Self-Contained) -->
+    <style>
+/* Estilos customizados para o Mini-LLM Playground */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #0f172a;
+    color: #f8fafc;
+    overflow-x: hidden;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+/* Glassmorphism Cards */
+.glass-panel {
+    background: rgba(30, 41, 59, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-hover {
+    transition: all 0.2s ease-in-out;
+}
+.glass-panel-hover:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Custom Sliders */
+input[type=range] {
+    accent-color: #ec4899;
+}
+
+/* Monospace Text Area */
+.font-mono-code {
+    font-family: 'Fira Code', monospace;
+}
+
+    </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
 
@@ -68,14 +122,14 @@
             <div class="glass-panel p-4 rounded-xl space-y-3">
                 <div class="flex items-center justify-between border-b border-slate-700/60 pb-2">
                     <h2 class="text-xs font-bold uppercase tracking-wider text-pink-400 flex items-center">
-                        <i class="fas fa-temperature-high mr-1.5"></i> Amostragem por Temperatura ($\tau$)
+                        <i class="fas fa-temperature-high mr-1.5"></i> Amostragem por Temperatura (τ)
                     </h2>
                 </div>
 
                 <div class="space-y-3 text-xs">
                     <div>
                         <div class="flex justify-between mb-1">
-                            <span class="text-slate-300 font-semibold">Temperatura ($\tau$):</span>
+                            <span class="text-slate-300 font-semibold">Temperatura (τ):</span>
                             <span id="tempVal" class="font-bold text-pink-400 text-sm">0.70</span>
                         </div>
                         <input type="range" id="tempRange" min="0.1" max="2.0" step="0.05" value="0.70" class="w-full">
@@ -206,7 +260,7 @@
             <!-- Gráfico de Distribuição Softmax -->
             <div class="glass-panel p-3.5 rounded-xl space-y-2">
                 <h2 class="text-xs font-bold uppercase tracking-wider text-pink-400 flex items-center justify-between">
-                    <span><i class="fas fa-chart-bar mr-1.5"></i> Distribuição Softmax $P(c)$</span>
+                    <span><i class="fas fa-chart-bar mr-1.5"></i> Distribuição Softmax P(c)</span>
                 </h2>
                 <div class="h-44 relative">
                     <canvas id="softmaxChartCanvas"></canvas>
@@ -232,10 +286,932 @@
         <p>Mini-LLM Playground — Demonstração Didática de Redes Neurais para Linguagem (Embedding + LSTM + Softmax com Temperatura) em JS Puro.</p>
     </footer>
 
-    <!-- Scripts da Aplicação -->
-    <script src="js/lstm_engine.js"></script>
-    <script src="js/network_vis.js"></script>
-    <script src="js/charts.js"></script>
-    <script src="js/app.js"></script>
+    <!-- Scripts Inline Bundled (Zero Dependência Local) -->
+    <script>
+// === lstm_engine.js ===
+/**
+ * Mini-LLM Engine - Motor de Rede Neural Recorrente (LSTM + Embedding + Softmax com Temperatura)
+ * Suporta Corpus Expandido e Customizado pelo Usuário.
+ */
+
+class MiniLLMEngine {
+    constructor(config = {}) {
+        this.defaultCorpus = `A inteligencia artificial esta mudando a forma como as empresas tomam decisoes no mundo moderno.
+Um modelo de linguagem aprende a prever a proxima palavra ou letra de um texto usando padroes que encontrou durante o treinamento com muitos exemplos de dados.
+
+Bancos e instituicoes financeiras usam modelos de aprendizado de maquina para detectar fraudes em tempo real, analisar risco de credito e identificar padroes de lavagem de dinheiro em grandes volumes de transacoes bancarias.
+Lojas e empresas de comercio eletronico usam sistemas de recomendacao para sugerir produtos personalizados que o cliente tem maior probabilidade de comprar, aumentando as vendas e a satisfacao dos consumidores.
+Hospitais e clinicas medicas usam visao computacional e redes neurais profundas para ajudar medicos a analisar exames de imagem como radiografias e tomografias com maior precisao.
+
+Um chatbot inteligente de atendimento ao cliente tambem e, no fundo, um modelo de linguagem probabilistico.
+Ele recebe a mensagem inicial da pessoa como contexto e gera uma resposta coerente, caractere por caractere ou token por token, tentando prever qual e a sequencia de palavras mais provavel e mais util para resolver o problema do cliente.
+
+As redes neurais profundas utilizam camadas de neuronios artificiais organizadas em arquiteturas como redes convolucionais para imagens e redes recorrentes como LSTMs ou Transformers para sequencias de texto.
+Quanto mais dados de alta qualidade um modelo recebe durante a fase de treinamento, e quanto maior for a sua capacidade de parametros, melhor ele consegue captar as nuances da linguagem humana e gerar textos mais fluentes, uteis e adequados para cada negocio.
+
+A inteligencia artificial generativa permite criar novos conteudos, incluindo textos, imagens, codigos de programacao e dados sinteticos para treinamento.
+Compreender o funcionamento basico da passagem de mensagens, embeddings e amostragem probabilistica e fundamental para utilizar a IA com eficacia na solucao de problemas reais das empresas.`;
+
+        this.corpus = config.corpus || this.defaultCorpus;
+        this.embeddingDim = config.embeddingDim || 16;
+        this.hiddenDim = config.hiddenDim || 32;
+        this.seqLen = config.seqLen || 20;
+        this.learningRate = config.learningRate || 0.05;
+        this.temperature = config.temperature || 0.7;
+
+        this.initTokenizer();
+        this.initWeights();
+    }
+
+    setCustomCorpus(newCorpusText) {
+        if (!newCorpusText || newCorpusText.trim().length < 50) return false;
+        this.corpus = newCorpusText.trim();
+        this.initTokenizer();
+        this.initWeights();
+        return true;
+    }
+
+    initTokenizer() {
+        const uniqueChars = Array.from(new Set(this.corpus)).sort();
+        this.vocab = uniqueChars;
+        this.vocabSize = uniqueChars.length;
+
+        this.char2idx = {};
+        this.idx2char = {};
+
+        uniqueChars.forEach((ch, idx) => {
+            this.char2idx[ch] = idx;
+            this.idx2char[idx] = ch;
+        });
+
+        this.trainX = [];
+        this.trainY = [];
+
+        for (let i = 0; i <= this.corpus.length - this.seqLen - 1; i++) {
+            const seqIn = this.corpus.slice(i, i + this.seqLen);
+            const charOut = this.corpus[i + this.seqLen];
+
+            this.trainX.push(seqIn.split('').map(c => this.char2idx[c]));
+            this.trainY.push(this.char2idx[charOut]);
+        }
+    }
+
+    initWeights() {
+        const randMat = (r, c, std = 0.2) => {
+            const m = [];
+            for (let i = 0; i < r; i++) {
+                const row = [];
+                for (let j = 0; j < c; j++) row.push((Math.random() * 2 - 1) * std);
+                m.push(row);
+            }
+            return m;
+        };
+
+        const randVec = (n, val = 0.0) => new Array(n).fill(val);
+
+        this.E = randMat(this.vocabSize, this.embeddingDim);
+
+        const inDim = this.embeddingDim;
+        const hDim = this.hiddenDim;
+
+        this.Wf = randMat(hDim, inDim); this.Uf = randMat(hDim, hDim); this.bf = randVec(hDim, 1.0);
+        this.Wi = randMat(hDim, inDim); this.Ui = randMat(hDim, hDim); this.bi = randVec(hDim, 0.0);
+        this.Wc = randMat(hDim, inDim); this.Uc = randMat(hDim, hDim); this.bc = randVec(hDim, 0.0);
+        this.Wo = randMat(hDim, inDim); this.Uo = randMat(hDim, hDim); this.bo = randVec(hDim, 0.0);
+
+        this.Wy = randMat(this.vocabSize, hDim);
+        this.by = randVec(this.vocabSize, 0.0);
+
+        this.history = { loss: [], accuracy: [] };
+    }
+
+    sigmoid(x) { return 1 / (1 + Math.exp(-Math.max(-15, Math.min(15, x)))); }
+    tanh(x) { return Math.tanh(x); }
+
+    lstmStep(x_t, h_prev, c_prev) {
+        const hDim = this.hiddenDim;
+        const f = new Array(hDim), i = new Array(hDim), c_tilde = new Array(hDim), o = new Array(hDim);
+        const c_next = new Array(hDim), h_next = new Array(hDim);
+
+        for (let d = 0; d < hDim; d++) {
+            let sumF = this.bf[d], sumI = this.bi[d], sumC = this.bc[d], sumO = this.bo[d];
+            for (let j = 0; j < this.embeddingDim; j++) {
+                sumF += this.Wf[d][j] * x_t[j];
+                sumI += this.Wi[d][j] * x_t[j];
+                sumC += this.Wc[d][j] * x_t[j];
+                sumO += this.Wo[d][j] * x_t[j];
+            }
+            for (let j = 0; j < hDim; j++) {
+                sumF += this.Uf[d][j] * h_prev[j];
+                sumI += this.Ui[d][j] * h_prev[j];
+                sumC += this.Uc[d][j] * h_prev[j];
+                sumO += this.Uo[d][j] * h_prev[j];
+            }
+
+            f[d] = this.sigmoid(sumF);
+            i[d] = this.sigmoid(sumI);
+            c_tilde[d] = this.tanh(sumC);
+            o[d] = this.sigmoid(sumO);
+
+            c_next[d] = f[d] * c_prev[d] + i[d] * c_tilde[d];
+            h_next[d] = o[d] * this.tanh(c_next[d]);
+        }
+
+        return { f, i, c_tilde, o, c_next, h_next };
+    }
+
+    forward(charIndices) {
+        let h = new Array(this.hiddenDim).fill(0);
+        let c = new Array(this.hiddenDim).fill(0);
+        const steps = [];
+
+        for (let t = 0; t < charIndices.length; t++) {
+            const charIdx = charIndices[t];
+            const x_t = this.E[charIdx] || new Array(this.embeddingDim).fill(0);
+
+            const res = this.lstmStep(x_t, h, c);
+            h = res.h_next;
+            c = res.c_next;
+
+            steps.push({
+                t,
+                charIdx,
+                char: this.idx2char[charIdx],
+                embedding: x_t,
+                ...res
+            });
+        }
+
+        const logits = new Array(this.vocabSize).fill(0);
+        for (let v = 0; v < this.vocabSize; v++) {
+            let sum = this.by[v];
+            for (let d = 0; d < this.hiddenDim; d++) {
+                sum += this.Wy[v][d] * h[d];
+            }
+            logits[v] = sum;
+        }
+
+        return { steps, finalH: h, finalC: c, logits };
+    }
+
+    computeSoftmaxWithTemperature(logits, temp = null) {
+        const tVal = Math.max(0.01, temp !== null ? temp : this.temperature);
+        const scaledLogits = logits.map(z => z / tVal);
+        const maxLogit = Math.max(...scaledLogits);
+        const exps = scaledLogits.map(z => Math.exp(z - maxLogit));
+        const sumExps = exps.reduce((a, b) => a + b, 1e-9);
+
+        const probs = exps.map(e => e / sumExps);
+        return { probs, temp: tVal };
+    }
+
+    sampleNextChar(probs) {
+        const r = Math.random();
+        let cumSum = 0;
+        for (let v = 0; v < probs.length; v++) {
+            cumSum += probs[v];
+            if (r <= cumSum) return v;
+        }
+        return probs.length - 1;
+    }
+
+    trainEpoch() {
+        let totalLoss = 0;
+        let correct = 0;
+        const numSamples = this.trainX.length;
+        if (numSamples === 0) return { loss: 0, accuracy: 0 };
+
+        // Subamostra para velocidade no browser
+        const batchSize = Math.min(numSamples, 300);
+        const indices = [];
+        for (let b = 0; b < batchSize; b++) {
+            indices.push(Math.floor(Math.random() * numSamples));
+        }
+
+        for (let k = 0; k < batchSize; k++) {
+            const idx = indices[k];
+            const seqX = this.trainX[idx];
+            const targetY = this.trainY[idx];
+
+            const fwd = this.forward(seqX);
+            const { probs } = this.computeSoftmaxWithTemperature(fwd.logits, 1.0);
+
+            const probTarget = Math.max(probs[targetY], 1e-9);
+            totalLoss += -Math.log(probTarget);
+
+            const predY = probs.indexOf(Math.max(...probs));
+            if (predY === targetY) correct++;
+
+            const dLogits = probs.map((p, v) => (p - (v === targetY ? 1.0 : 0.0)) / batchSize);
+
+            for (let v = 0; v < this.vocabSize; v++) {
+                this.by[v] -= this.learningRate * dLogits[v];
+                for (let d = 0; d < this.hiddenDim; d++) {
+                    this.Wy[v][d] -= this.learningRate * dLogits[v] * fwd.finalH[d];
+                }
+            }
+        }
+
+        const avgLoss = totalLoss / batchSize;
+        const accuracy = (correct / batchSize) * 100;
+
+        this.history.loss.push(avgLoss);
+        this.history.accuracy.push(accuracy);
+
+        return { loss: avgLoss, accuracy };
+    }
+
+    generateText(promptText, length = 60, temp = 0.7) {
+        let currentPrompt = promptText || "A inteligencia artificial ";
+        let generated = "";
+
+        for (let step = 0; step < length; step++) {
+            const inputSub = currentPrompt.slice(-this.seqLen);
+            const indices = inputSub.split('').map(c => this.char2idx[c] !== undefined ? this.char2idx[c] : 0);
+
+            const fwd = this.forward(indices);
+            const { probs } = this.computeSoftmaxWithTemperature(fwd.logits, temp);
+
+            const nextCharIdx = this.sampleNextChar(probs);
+            const nextChar = this.idx2char[nextCharIdx];
+
+            generated += nextChar;
+            currentPrompt += nextChar;
+        }
+
+        return generated;
+    }
+}
+
+window.MiniLLMEngine = MiniLLMEngine;
+
+
+// === network_vis.js ===
+/**
+ * Network Visualizer - Renderização Gráfica Interativa da Arquitetura do Mini-LLM no Canvas
+ * Desenha os blocos de Tokenização, Embedding (16 dims), Portas da Célula LSTM e Distribuição de Saída.
+ */
+
+class NetworkVisualizer {
+    constructor(canvasElement) {
+        this.canvas = canvasElement;
+        this.ctx = canvasElement.getContext('2d');
+
+        this.activeStepData = null;
+        this.particles = [];
+        this.animationId = null;
+
+        this.resize();
+        this.bindEvents();
+        this.startAnimationLoop();
+    }
+
+    resize() {
+        const rect = this.canvas.parentElement.getBoundingClientRect();
+        this.canvas.width = rect.width || 800;
+        this.canvas.height = rect.height || 450;
+    }
+
+    bindEvents() {
+        window.addEventListener('resize', () => this.resize());
+    }
+
+    setStepData(stepData, logits, probs, temp) {
+        this.activeStepData = stepData;
+        this.logits = logits;
+        this.probs = probs;
+        this.temp = temp;
+        this.triggerPulseParticles();
+    }
+
+    triggerPulseParticles() {
+        this.particles = [];
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+
+        // Criar partículas fluindo da esquerda (Input/Embedding) para a direita (LSTM e Softmax)
+        for (let i = 0; i < 15; i++) {
+            this.particles.push({
+                x: w * 0.15,
+                y: h * 0.4 + (Math.random() - 0.5) * 60,
+                targetX: w * 0.5,
+                targetY: h * 0.45 + (Math.random() - 0.5) * 80,
+                progress: 0.0,
+                speed: 0.02 + Math.random() * 0.02,
+                color: '#6366f1'
+            });
+            this.particles.push({
+                x: w * 0.5,
+                y: h * 0.45 + (Math.random() - 0.5) * 80,
+                targetX: w * 0.85,
+                targetY: h * 0.5 + (Math.random() - 0.5) * 100,
+                progress: 0.0,
+                speed: 0.02 + Math.random() * 0.02,
+                color: '#ec4899'
+            });
+        }
+    }
+
+    startAnimationLoop() {
+        const drawFrame = () => {
+            this.draw();
+            this.animationId = requestAnimationFrame(drawFrame);
+        };
+        requestAnimationFrame(drawFrame);
+    }
+
+    draw() {
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        this.ctx.clearRect(0, 0, w, h);
+
+        // Fundo com grade sutil
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+        this.ctx.lineWidth = 1;
+        const step = 30;
+        for (let x = 0; x < w; x += step) {
+            this.ctx.beginPath(); this.ctx.moveTo(x, 0); this.ctx.lineTo(x, h); this.ctx.stroke();
+        }
+        for (let y = 0; y < h; y += step) {
+            this.ctx.beginPath(); this.ctx.moveTo(0, y); this.ctx.lineTo(w, y); this.ctx.stroke();
+        }
+
+        // Posições dos Blocos Principais
+        const bInput = { x: w * 0.05, y: h * 0.25, w: w * 0.18, h: h * 0.5 };
+        const bLSTM  = { x: w * 0.32, y: h * 0.15, w: w * 0.36, h: h * 0.7 };
+        const bDense = { x: w * 0.75, y: h * 0.25, w: w * 0.20, h: h * 0.5 };
+
+        // Linhas de Conexão de Sinal entre Blocos
+        this.ctx.beginPath();
+        this.ctx.moveTo(bInput.x + bInput.w, bInput.y + bInput.h / 2);
+        this.ctx.lineTo(bLSTM.x, bLSTM.y + bLSTM.h / 2);
+        this.ctx.strokeStyle = 'rgba(99, 102, 241, 0.5)';
+        this.ctx.lineWidth = 3;
+        this.ctx.stroke();
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(bLSTM.x + bLSTM.w, bLSTM.y + bLSTM.h / 2);
+        this.ctx.lineTo(bDense.x, bDense.y + bDense.h / 2);
+        this.ctx.strokeStyle = 'rgba(236, 72, 153, 0.5)';
+        this.ctx.lineWidth = 3;
+        this.ctx.stroke();
+
+        // 1. Desenha Bloco 1: Entrada / Tokenizador & Embedding (16 dims)
+        this.drawCardBlock(bInput, '1. Token & Embedding', '#3b82f6');
+        this.drawEmbeddingValues(bInput);
+
+        // 2. Desenha Bloco 2: Célula Recorrente LSTM (Portas e Estados)
+        this.drawCardBlock(bLSTM, '2. Célula LSTM (Hidden State h_t)', '#8b5cf6');
+        this.drawLSTMGates(bLSTM);
+
+        // 3. Desenha Bloco 3: Camada Densa & Softmax com Temperatura
+        this.drawCardBlock(bDense, '3. Softmax (Temperatura τ)', '#ec4899');
+        this.drawSoftmaxOutputs(bDense);
+
+        // Desenha Partículas Animadas
+        this.drawParticles();
+    }
+
+    drawCardBlock(rect, title, accentColor) {
+        this.ctx.save();
+        this.ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        this.ctx.strokeStyle = accentColor;
+        this.ctx.lineWidth = 2;
+        this.ctx.shadowColor = accentColor;
+        this.ctx.shadowBlur = 10;
+
+        this.ctx.beginPath();
+        this.ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 12);
+        this.ctx.fill();
+        this.ctx.stroke();
+        this.ctx.restore();
+
+        // Título do Bloco
+        this.ctx.fillStyle = '#f8fafc';
+        this.ctx.font = 'bold 12px Inter, sans-serif';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(title, rect.x + rect.w / 2, rect.y + 22);
+    }
+
+    drawEmbeddingValues(rect) {
+        if (!this.activeStepData) {
+            this.ctx.fillStyle = '#64748b';
+            this.ctx.font = '11px Inter, sans-serif';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('Nenhum passo ativo', rect.x + rect.w / 2, rect.y + rect.h / 2);
+            return;
+        }
+
+        const char = this.activeStepData.char === '\n' ? '\\n' : this.activeStepData.char;
+        this.ctx.fillStyle = '#60a5fa';
+        this.ctx.font = 'bold 14px Inter, sans-serif';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(`Char: "${char}" (ID: ${this.activeStepData.charIdx})`, rect.x + rect.w / 2, rect.y + 45);
+
+        // Renderiza barras do vetor de embedding d=16
+        const emb = this.activeStepData.embedding;
+        const startY = rect.y + 60;
+        const barWidth = (rect.w - 20) / 16;
+
+        for (let d = 0; d < 16; d++) {
+            const val = emb[d] || 0;
+            const h = Math.abs(val) * 35;
+            const x = rect.x + 10 + d * barWidth;
+            const y = startY + 40 - (val > 0 ? h : 0);
+
+            this.ctx.fillStyle = val >= 0 ? '#3b82f6' : '#ef4444';
+            this.ctx.fillRect(x, y, barWidth - 1, Math.max(2, h));
+        }
+
+        this.ctx.fillStyle = '#94a3b8';
+        this.ctx.font = '10px Inter, sans-serif';
+        this.ctx.fillText('Vetor Denso (d=16)', rect.x + rect.w / 2, rect.y + rect.h - 15);
+    }
+
+    drawLSTMGates(rect) {
+        if (!this.activeStepData) {
+            this.ctx.fillStyle = '#64748b';
+            this.ctx.font = '11px Inter, sans-serif';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('Aguardando execução...', rect.x + rect.w / 2, rect.y + rect.h / 2);
+            return;
+        }
+
+        const data = this.activeStepData;
+        const avg = arr => (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(3);
+
+        const gates = [
+            { name: 'Forget Gate (f_t)', val: avg(data.f), color: '#ef4444' },
+            { name: 'Input Gate (i_t)', val: avg(data.i), color: '#10b981' },
+            { name: 'Output Gate (o_t)', val: avg(data.o), color: '#f59e0b' },
+            { name: 'Cell Memory (C_t)', val: avg(data.c_next), color: '#3b82f6' }
+        ];
+
+        const startY = rect.y + 45;
+        const gapY = (rect.h - 60) / gates.length;
+
+        gates.forEach((g, idx) => {
+            const y = startY + idx * gapY;
+
+            // Rótulo
+            this.ctx.fillStyle = '#cbd5e1';
+            this.ctx.font = '11px Inter, sans-serif';
+            this.ctx.textAlign = 'left';
+            this.ctx.fillText(g.name, rect.x + 15, y);
+
+            // Valor Numérico
+            this.ctx.fillStyle = g.color;
+            this.ctx.font = 'bold 11px Fira Code, monospace';
+            this.ctx.textAlign = 'right';
+            this.ctx.fillText(g.val, rect.x + rect.w - 15, y);
+
+            // Barra de ativação
+            const valNum = parseFloat(g.val);
+            const fillW = Math.max(4, Math.min(1.0, (valNum + 1) / 2) * (rect.w - 30));
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+            this.ctx.fillRect(rect.x + 15, y + 6, rect.w - 30, 6);
+            this.ctx.fillStyle = g.color;
+            this.ctx.fillRect(rect.x + 15, y + 6, fillW, 6);
+        });
+    }
+
+    drawSoftmaxOutputs(rect) {
+        if (!this.probs) {
+            this.ctx.fillStyle = '#64748b';
+            this.ctx.font = '11px Inter, sans-serif';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('Aguardando amostragem...', rect.x + rect.w / 2, rect.y + rect.h / 2);
+            return;
+        }
+
+        this.ctx.fillStyle = '#f472b6';
+        this.ctx.font = 'bold 12px Inter, sans-serif';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(`Temp (τ): ${this.temp !== undefined ? this.temp.toFixed(2) : '0.70'}`, rect.x + rect.w / 2, rect.y + 45);
+
+        // Pega os 4 caracteres mais prováveis
+        const topProbs = this.probs
+            .map((p, idx) => ({ idx, p, char: window.miniEngine.idx2char[idx] }))
+            .sort((a, b) => b.p - a.p)
+            .slice(0, 4);
+
+        const startY = rect.y + 60;
+        topProbs.forEach((item, i) => {
+            const y = startY + i * 28;
+            const charDisp = item.char === '\n' ? '\\n' : (item.char === ' ' ? 'ESPAÇO' : `"${item.char}"`);
+
+            this.ctx.fillStyle = i === 0 ? '#10b981' : '#e2e8f0';
+            this.ctx.font = '10px Inter, sans-serif';
+            this.ctx.textAlign = 'left';
+            this.ctx.fillText(`${charDisp}`, rect.x + 12, y);
+
+            this.ctx.textAlign = 'right';
+            this.ctx.fillText(`${(item.p * 100).toFixed(1)}%`, rect.x + rect.w - 12, y);
+        });
+    }
+
+    drawParticles() {
+        for (const p of this.particles) {
+            p.progress += p.speed;
+            if (p.progress >= 1.0) p.progress = 0.0;
+
+            const currX = p.x + (p.targetX - p.x) * p.progress;
+            const currY = p.y + (p.targetY - p.y) * p.progress;
+
+            this.ctx.save();
+            this.ctx.shadowColor = p.color;
+            this.ctx.shadowBlur = 8;
+
+            this.ctx.beginPath();
+            this.ctx.arc(currX, currY, 3, 0, Math.PI * 2);
+            this.ctx.fillStyle = p.color;
+            this.ctx.fill();
+
+            this.ctx.restore();
+        }
+    }
+}
+
+window.NetworkVisualizer = NetworkVisualizer;
+
+
+// === charts.js ===
+/**
+ * Playground Charts - Gráficos Chart.js para Distribuição Softmax e Métricas de Treino
+ */
+
+class PlaygroundCharts {
+    constructor() {
+        this.softmaxChart = null;
+        this.metricsChart = null;
+        this.initSoftmaxChart();
+        this.initMetricsChart();
+    }
+
+    initSoftmaxChart() {
+        const ctx = document.getElementById('softmaxChartCanvas').getContext('2d');
+        this.softmaxChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Probabilidade Softmax P(c)',
+                    data: [],
+                    backgroundColor: '#ec4899',
+                    borderColor: '#f472b6',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 150 },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8', font: { size: 10 } }
+                    },
+                    y: {
+                        min: 0,
+                        max: 1.0,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `Probabilidade: ${(context.raw * 100).toFixed(2)}%`
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    initMetricsChart() {
+        const ctx = document.getElementById('metricsChartCanvas').getContext('2d');
+        this.metricsChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Perda (Loss)',
+                        data: [],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        yAxisID: 'yLoss'
+                    },
+                    {
+                        label: 'Acurácia (%)',
+                        data: [],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        yAxisID: 'yAcc'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    yLoss: {
+                        type: 'linear',
+                        position: 'left',
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#ef4444' }
+                    },
+                    yAcc: {
+                        type: 'linear',
+                        position: 'right',
+                        min: 0,
+                        max: 100,
+                        grid: { drawOnChartArea: false },
+                        ticks: { color: '#10b981' }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: '#e2e8f0' } }
+                }
+            }
+        });
+    }
+
+    updateSoftmaxChart(vocab, probs, sampledIdx = -1) {
+        const labels = vocab.map(c => c === '\n' ? '\\n' : (c === ' ' ? '␣' : c));
+        this.softmaxChart.data.labels = labels;
+        this.softmaxChart.data.datasets[0].data = probs;
+
+        // Destaque de cor no caractere sorteado
+        const colors = probs.map((_, i) => i === sampledIdx ? '#10b981' : '#ec4899');
+        this.softmaxChart.data.datasets[0].backgroundColor = colors;
+
+        this.softmaxChart.update();
+    }
+
+    updateMetricsChart(history) {
+        const labels = history.loss.map((_, idx) => idx + 1);
+        this.metricsChart.data.labels = labels;
+        this.metricsChart.data.datasets[0].data = history.loss;
+        this.metricsChart.data.datasets[1].data = history.accuracy;
+        this.metricsChart.update('none');
+    }
+
+    resetMetricsChart() {
+        this.metricsChart.data.labels = [];
+        this.metricsChart.data.datasets[0].data = [];
+        this.metricsChart.data.datasets[1].data = [];
+        this.metricsChart.update();
+    }
+}
+
+window.PlaygroundCharts = PlaygroundCharts;
+
+
+// === app.js ===
+/**
+ * Mini-LLM App Controller - Controlador Principal com Suporte a Corpus Customizável
+ */
+
+document.addEventListener('DOMContentLoaded', () => {
+    const engine = new MiniLLMEngine();
+    window.miniEngine = engine;
+
+    const canvas = document.getElementById('networkCanvas');
+    const netVis = new NetworkVisualizer(canvas);
+    const charts = new PlaygroundCharts();
+
+    let isAutoGenerating = false;
+    let autoGenInterval = null;
+
+    let isTraining = false;
+    let trainInterval = null;
+    let currentEpoch = 0;
+
+    let currentGeneratedText = "";
+
+    // Preenche o textarea com o corpus default
+    const corpusArea = document.getElementById('corpusTextarea');
+    if (corpusArea) {
+        corpusArea.value = engine.corpus;
+        document.getElementById('corpusSizeLabel').textContent = `${engine.corpus.length} chars`;
+    }
+
+    // Inicialização da UI
+    initTokenizerTable();
+    updateMathFormulas();
+    runSingleStep();
+
+    // --- Vinculação de Eventos UI ---
+
+    // Atualização de Corpus Customizado
+    document.getElementById('btnUpdateCorpus').addEventListener('click', () => {
+        const text = corpusArea.value;
+        if (engine.setCustomCorpus(text)) {
+            document.getElementById('corpusSizeLabel').textContent = `${engine.corpus.length} chars`;
+            reinitWeights();
+            initTokenizerTable();
+            alert(`Corpus atualizado com sucesso! ${engine.corpus.length} caracteres e ${engine.vocabSize} símbolos únicos.`);
+        } else {
+            alert("O texto do corpus precisa ter pelo menos 50 caracteres.");
+        }
+    });
+
+    // Prompt Presets
+    document.getElementById('promptPresetSelect').addEventListener('change', (e) => {
+        document.getElementById('promptInput').value = e.target.value;
+        resetGeneration();
+    });
+
+    document.getElementById('promptInput').addEventListener('input', () => {
+        resetGeneration();
+    });
+
+    // Slider de Temperatura
+    const tempSlider = document.getElementById('tempRange');
+    tempSlider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        document.getElementById('tempVal').textContent = val.toFixed(2);
+        engine.temperature = val;
+
+        updateMathFormulas();
+        runSingleStep();
+    });
+
+    // Botões de Geração
+    document.getElementById('btnStepGen').addEventListener('click', generateNextCharStep);
+    document.getElementById('btnPlayGen').addEventListener('click', toggleAutoGeneration);
+    document.getElementById('btnResetGen').addEventListener('click', resetGeneration);
+
+    // Botão de Treinamento Live
+    document.getElementById('btnTrainToggle').addEventListener('click', toggleTraining);
+    document.getElementById('btnResetWeights').addEventListener('click', reinitWeights);
+
+    // Speed Slider
+    const speedSlider = document.getElementById('speedRange');
+    speedSlider.addEventListener('input', (e) => {
+        document.getElementById('speedVal').textContent = `${e.target.value}ms`;
+        if (isAutoGenerating) {
+            stopAutoGeneration();
+            startAutoGeneration();
+        }
+    });
+
+    function resetGeneration() {
+        stopAutoGeneration();
+        const prompt = document.getElementById('promptInput').value || "A inteligencia artificial ";
+        currentGeneratedText = prompt;
+        document.getElementById('outputText').textContent = currentGeneratedText;
+        runSingleStep();
+    }
+
+    function runSingleStep() {
+        const prompt = currentGeneratedText || "A inteligencia artificial ";
+        const sub = prompt.slice(-engine.seqLen);
+        const indices = sub.split('').map(c => engine.char2idx[c] !== undefined ? engine.char2idx[c] : 0);
+
+        const fwd = engine.forward(indices);
+        const { probs } = engine.computeSoftmaxWithTemperature(fwd.logits, engine.temperature);
+
+        const lastStep = fwd.steps[fwd.steps.length - 1];
+        netVis.setStepData(lastStep, fwd.logits, probs, engine.temperature);
+
+        const sampledIdx = engine.sampleNextChar(probs);
+        charts.updateSoftmaxChart(engine.vocab, probs, sampledIdx);
+
+        return { fwd, probs, sampledIdx };
+    }
+
+    function generateNextCharStep() {
+        const { probs, sampledIdx } = runSingleStep();
+
+        const sampledChar = engine.idx2char[sampledIdx];
+        currentGeneratedText += sampledChar;
+
+        const outElem = document.getElementById('outputText');
+        outElem.textContent = currentGeneratedText;
+        outElem.scrollTop = outElem.scrollHeight;
+
+        runSingleStep();
+    }
+
+    function toggleAutoGeneration() {
+        if (isAutoGenerating) {
+            stopAutoGeneration();
+        } else {
+            startAutoGeneration();
+        }
+    }
+
+    function startAutoGeneration() {
+        isAutoGenerating = true;
+        const btn = document.getElementById('btnPlayGen');
+        btn.innerHTML = '<i class="fas fa-pause mr-1.5"></i> Pausar Geração';
+        btn.classList.replace('bg-purple-600', 'bg-yellow-600');
+
+        const speed = parseInt(document.getElementById('speedRange').value, 10);
+        autoGenInterval = setInterval(() => {
+            generateNextCharStep();
+        }, speed);
+    }
+
+    function stopAutoGeneration() {
+        isAutoGenerating = false;
+        if (autoGenInterval) clearInterval(autoGenInterval);
+        const btn = document.getElementById('btnPlayGen');
+        btn.innerHTML = '<i class="fas fa-play mr-1.5"></i> Gerar Auto';
+        btn.classList.replace('bg-yellow-600', 'bg-purple-600');
+    }
+
+    function toggleTraining() {
+        if (isTraining) {
+            stopTraining();
+        } else {
+            startTraining();
+        }
+    }
+
+    function startTraining() {
+        isTraining = true;
+        const btn = document.getElementById('btnTrainToggle');
+        btn.innerHTML = '<i class="fas fa-pause mr-1.5"></i> Pausar Treino';
+        btn.classList.replace('bg-green-600', 'bg-yellow-600');
+
+        trainInterval = setInterval(() => {
+            const res = engine.trainEpoch();
+            currentEpoch++;
+
+            document.getElementById('epochCounter').textContent = currentEpoch;
+            document.getElementById('lossVal').textContent = res.loss.toFixed(4);
+            document.getElementById('accVal').textContent = res.accuracy.toFixed(1) + '%';
+
+            charts.updateMetricsChart(engine.history);
+        }, 100);
+    }
+
+    function stopTraining() {
+        isTraining = false;
+        if (trainInterval) clearInterval(trainInterval);
+        const btn = document.getElementById('btnTrainToggle');
+        btn.innerHTML = '<i class="fas fa-graduation-cap mr-1.5"></i> Treinar Modelo (Live)';
+        btn.classList.replace('bg-yellow-600', 'bg-green-600');
+    }
+
+    function reinitWeights() {
+        if (isTraining) stopTraining();
+        currentEpoch = 0;
+        document.getElementById('epochCounter').textContent = '0';
+        document.getElementById('lossVal').textContent = '0.00';
+        document.getElementById('accVal').textContent = '0%';
+
+        engine.initWeights();
+        charts.resetMetricsChart();
+        resetGeneration();
+    }
+
+    function initTokenizerTable() {
+        const container = document.getElementById('tokenizerContainer');
+        if (!container) return;
+
+        let html = `
+            <div class="grid grid-cols-6 sm:grid-cols-9 gap-1.5 text-center text-xs font-mono">
+                ${engine.vocab.map((c, i) => `
+                    <div class="bg-slate-800 p-1.5 rounded border border-slate-700 hover:border-indigo-500 transition">
+                        <div class="text-indigo-400 font-bold">${c === '\n' ? '\\n' : (c === ' ' ? '␣' : c)}</div>
+                        <div class="text-[10px] text-slate-400">${i}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        container.innerHTML = html;
+    }
+
+    function updateMathFormulas() {
+        const temp = parseFloat(document.getElementById('tempRange').value);
+
+        const softFormula = `P(c_i \\mid \\text{contexto}) = \\frac{\\exp(z_i / ${temp.toFixed(2)})}{\\sum_{j=1}^{${engine.vocabSize}} \\exp(z_j / ${temp.toFixed(2)})}`;
+        const lstmFormula = `f_t = \\sigma(W_f x_t + U_f h_{t-1} + b_f) \\quad C_t = f_t \\odot C_{t-1} + i_t \\odot \\tilde{C}_t`;
+
+        if (window.katex) {
+            window.katex.render(softFormula, document.getElementById('katexSoftmax'), { throwOnError: false, displayMode: true });
+            window.katex.render(lstmFormula, document.getElementById('katexLSTM'), { throwOnError: false, displayMode: true });
+        }
+    }
+});
+
+    </script>
 </body>
 </html>
