@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Playground · Completar Frase com Rede Neural</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useRef, useMemo, useEffect } = React;
+
+
+// ---------- Corpus: frases curtas em português, com bifurcações propositais ----------
+// Vários grupos começam com o mesmo par de palavras e divergem depois — isso é o
+// que faz a rede mostrar mais de um palpite plausível em vez de "decorar" tudo.
+const CORPUS = [
+  'o gato dorme no sofá',
+  'o gato brinca com a bola',
+  'o gato sobe na árvore',
+  'o cachorro corre no parque',
+  'o cachorro late para o carteiro',
+  'o cachorro dorme na cama',
+  'a menina lê um livro',
+  'a menina desenha uma flor',
+  'a menina canta uma música',
+  'o menino joga bola no parque',
+  'o menino corre no jardim',
+  'o menino estuda matemática',
+  'eu gosto de comer pizza',
+  'eu gosto de tomar café',
+  'eu gosto de ler livros',
+  'ela gosta de tomar chá',
+  'ela gosta de ler livros',
+  'ela gosta de correr no parque',
+  'nós vamos ao parque hoje',
+  'nós vamos à praia amanhã',
+  'nós vamos ao cinema à noite',
+  'o sol brilha no céu',
+  'o sol nasce de manhã',
+  'o sol esquenta a terra',
+  'a lua brilha à noite',
+  'a lua ilumina o céu',
+  'o pássaro canta pela manhã',
+  'o pássaro voa sobre o rio',
+  'o pássaro constrói um ninho',
+  'o professor explica a lição',
+  'o professor corrige a prova',
+  'o professor escreve no quadro',
+  'os alunos estudam para a prova',
+  'os alunos brincam no recreio',
+  'os alunos leem um livro',
+  'meu pai lava o carro',
+  'meu pai cozinha o jantar',
+  'meu pai lê o jornal',
+  'minha mãe cozinha o jantar',
+  'minha mãe lê um livro',
+  'minha mãe trabalha no escritório',
+  'o time venceu o jogo',
+  'o time perdeu a partida',
+  'o time treina todos os dias',
+  'o filme começa às oito',
+];
+
+const STARTERS = ['o gato', 'o cachorro', 'a menina', 'o menino', 'eu gosto de', 'ela gosta de', 'nós vamos', 'o professor', 'os alunos', 'meu pai', 'minha mãe', 'o time'];
+
+const PAD = '<início>';
+const H = 16;
+
+function tokenize(text) {
+  return text.toLowerCase().replace(/[.,!?;:()"']/g, '').split(/\s+/).filter(Boolean);
+}
+
+function buildVocab(corpus) {
+  const set = new Set([PAD]);
+  corpus.forEach((s) => tokenize(s).forEach((w) => set.add(w)));
+  const words = Array.from(set).sort();
+  const index = {};
+  words.forEach((w, i) => (index[w] = i));
+  return { words, index };
+}
+
+function buildSamples(corpus, vocabIndex) {
+  const samples = [];
+  corpus.forEach((sentence) => {
+    const tokens = [PAD, PAD, ...tokenize(sentence)];
+    for (let i = 2; i < tokens.length; i++) {
+      const c1 = vocabIndex[tokens[i - 2]], c2 = vocabIndex[tokens[i - 1]], target = vocabIndex[tokens[i]];
+      if (c1 === undefined || c2 === undefined || target === undefined) continue;
+      samples.push({ c1, c2, target });
+    }
+  });
+  return samples;
+}
+
+const VOCAB = buildVocab(CORPUS);
+const V = VOCAB.words.length;
+const SAMPLES = buildSamples(CORPUS, VOCAB.index);
+
+function randArr(n, scale) { return Array.from({ length: n }, () => (Math.random() * 2 - 1) * scale); }
+function randMat(rows, cols, scale) { return Array.from({ length: rows }, () => randArr(cols, scale)); }
+
+function initModel() {
+  return {
+    W1: randMat(H, 2 * V, 0.3), // H x 2V — colunas [0,V) para a 1ª palavra do contexto, [V,2V) para a 2ª
+    b1: new Array(H).fill(0),
+    W2: randMat(V, H, 0.3),    // V x H
+    b2: new Array(V).fill(0),
+  };
+}
+
+function forwardCore(model, c1, c2) {
+  const z1 = new Array(H);
+  for (let h = 0; h < H; h++) z1[h] = model.b1[h] + model.W1[h][c1] + model.W1[h][V + c2];
+  const hAct = z1.map(Math.tanh);
+  const z2 = new Array(V);
+  for (let v = 0; v < V; v++) {
+    let s = model.b2[v];
+    for (let h = 0; h < H; h++) s += model.W2[v][h] * hAct[h];
+    z2[v] = s;
+  }
+  const maxZ = Math.max(...z2);
+  const exps = z2.map((z) => Math.exp(z - maxZ));
+  const sumExp = exps.reduce((a, b) => a + b, 0);
+  const p = exps.map((e) => e / sumExp);
+  return { hAct, p };
+}
+
+function trainEpochs(model, samples, lr, epochs) {
+  let lastLoss = 0;
+  for (let e = 0; e < epochs; e++) {
+    for (let i = samples.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [samples[i], samples[j]] = [samples[j], samples[i]];
+    }
+    let totalLoss = 0;
+    for (const { c1, c2, target } of samples) {
+      const { hAct, p } = forwardCore(model, c1, c2);
+      totalLoss += -Math.log(Math.max(p[target], 1e-9));
+
+      const dz2 = p.slice();
+      dz2[target] -= 1;
+      const dh = new Array(H).fill(0);
+      for (let v = 0; v < V; v++) {
+        const g = dz2[v];
+        for (let h = 0; h < H; h++) {
+          dh[h] += model.W2[v][h] * g;
+          model.W2[v][h] -= lr * g * hAct[h];
+        }
+        model.b2[v] -= lr * g;
+      }
+      for (let h = 0; h < H; h++) {
+        const dz1 = dh[h] * (1 - hAct[h] * hAct[h]);
+        model.W1[h][c1] -= lr * dz1;
+        model.W1[h][V + c2] -= lr * dz1;
+        model.b1[h] -= lr * dz1;
+      }
+    }
+    lastLoss = totalLoss / samples.length;
+  }
+  return lastLoss;
+}
+
+const SLATE = [51, 65, 85], CYAN = [34, 211, 238], ROSE = [251, 113, 133];
+function lerp(a, b, t) { return a + (b - a) * t; }
+function lerpColor(c1, c2, t) {
+  return `rgb(${Math.round(lerp(c1[0], c2[0], t))},${Math.round(lerp(c1[1], c2[1], t))},${Math.round(lerp(c1[2], c2[2], t))})`;
+}
+function diverging(value, maxAbs) {
+  const t = Math.min(1, Math.abs(value) / maxAbs);
+  return value >= 0 ? lerpColor(SLATE, CYAN, t) : lerpColor(SLATE, ROSE, t);
+}
+
+const WIDTH = 700, HEIGHT = 420;
+
+function WordPredictionPlayground() {
+  const modelRef = useRef(null);
+  if (modelRef.current === null) modelRef.current = initModel();
+
+  const [epochs, setEpochs] = useState(0);
+  const [lossHistory, setLossHistory] = useState([]);
+  const [isAutoTraining, setIsAutoTraining] = useState(false);
+  const [modelVersion, setModelVersion] = useState(0);
+  const [phrase, setPhrase] = useState('o gato');
+
+  const trainBatch = (n) => {
+    const loss = trainEpochs(modelRef.current, SAMPLES, 0.2, n);
+    setEpochs((e) => e + n);
+    setLossHistory((h) => [...h.slice(-29), loss]);
+    setModelVersion((v) => v + 1);
+  };
+
+  useEffect(() => {
+    if (!isAutoTraining) return;
+    if (epochs >= 1500) { setIsAutoTraining(false); return; }
+    const id = setTimeout(() => trainBatch(25), 130);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAutoTraining, epochs]);
+
+  const resetModel = () => {
+    modelRef.current = initModel();
+    setEpochs(0);
+    setLossHistory([]);
+    setIsAutoTraining(false);
+    setModelVersion((v) => v + 1);
+  };
+
+  const tokens = tokenize(phrase);
+  const c2word = tokens.length >= 1 ? tokens[tokens.length - 1] : PAD;
+  const c1word = tokens.length >= 2 ? tokens[tokens.length - 2] : PAD;
+  const c1known = VOCAB.index[c1word] !== undefined;
+  const c2known = VOCAB.index[c2word] !== undefined;
+  const c1 = c1known ? VOCAB.index[c1word] : VOCAB.index[PAD];
+  const c2 = c2known ? VOCAB.index[c2word] : VOCAB.index[PAD];
+
+  const { hAct, p } = useMemo(() => forwardCore(modelRef.current, c1, c2), [c1, c2, modelVersion]);
+
+  const topK = p
+    .map((prob, idx) => ({ word: VOCAB.words[idx], prob, idx }))
+    .filter((x) => x.word !== PAD)
+    .sort((a, b) => b.prob - a.prob)
+    .slice(0, 6);
+  const topWord = topK[0];
+
+  const appendWord = (word) => setPhrase((prev) => (prev.trim().length ? prev.trim() + ' ' + word : word));
+
+  const maxLoss = lossHistory.length ? Math.max(...lossHistory) : 1;
+  const minLoss = lossHistory.length ? Math.min(...lossHistory) : 0;
+  const sparkPoints = lossHistory
+    .map((l, i) => {
+      const x = lossHistory.length > 1 ? (i / (lossHistory.length - 1)) * 180 + 10 : 100;
+      const range = maxLoss - minLoss || 1;
+      const y = 34 - ((l - minLoss) / range) * 28;
+      return `${x},${y}`;
+    })
+    .join(' ');
+
+  // --- posições do diagrama ---
+  const chipX = 90, chipY1 = HEIGHT / 2 - 46, chipY2 = HEIGHT / 2 + 46;
+  const hiddenX = 360;
+  const hiddenSpacing = (HEIGHT - 60) / (H - 1);
+  const hiddenY = (h) => 30 + h * hiddenSpacing;
+  const outX = 620, outY = HEIGHT / 2;
+
+  const btnBase = 'text-sm py-2 rounded border focus:outline-none focus:ring-2 focus:ring-cyan-400/50';
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        <p className="text-xs font-mono uppercase tracking-widest text-cyan-400 mb-2">Playground · Redes Neurais</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-50">Uma rede pequena tentando completar sua frase</h1>
+        <p className="text-sm text-slate-400 mt-2 max-w-2xl">
+          Ela aprende só com {CORPUS.length} frases de exemplo — não é um modelo de linguagem geral. Treine, digite o
+          início de uma frase parecida com as do treino e veja o que ela imagina vir a seguir.
+        </p>
+        <div className="inline-flex flex-wrap items-center gap-2 mt-4 px-3 py-1.5 rounded-full border border-slate-800 bg-slate-900/60 font-mono text-xs text-slate-400">
+          próxima palavra = softmax( W2 · tanh(W1 · contexto) + b2 )
+        </div>
+
+        <div className="flex flex-col lg:flex-row gap-6 mt-6">
+          {/* Sidebar */}
+          <aside className="w-full lg:w-72 shrink-0 space-y-5">
+            <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Treinamento</h3>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-slate-300">Épocas</span>
+                <span className="font-mono text-cyan-300">{epochs}</span>
+              </div>
+              <div className="flex justify-between text-sm mb-3">
+                <span className="text-slate-300">Perda (erro)</span>
+                <span className="font-mono text-amber-300">{lossHistory.length ? lossHistory[lossHistory.length - 1].toFixed(3) : '—'}</span>
+              </div>
+              {lossHistory.length > 1 && (
+                <svg viewBox="0 0 200 40" className="w-full mb-3">
+                  <polyline points={sparkPoints} fill="none" stroke="#22d3ee" strokeWidth="1.5" />
+                </svg>
+              )}
+              <div className="flex flex-col gap-2">
+                <button className={`${btnBase} border-slate-700 text-slate-300 hover:bg-slate-800`} onClick={() => trainBatch(40)}>
+                  Treinar +40 épocas
+                </button>
+                <button
+                  className={`${btnBase} font-semibold ${isAutoTraining ? 'border-rose-400 text-rose-300 hover:bg-rose-400/10' : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 border-cyan-500'}`}
+                  onClick={() => setIsAutoTraining((a) => !a)}
+                >
+                  {isAutoTraining ? '⏸ Parar treino automático' : '▶ Treinar automaticamente'}
+                </button>
+                <button className={`${btnBase} border-slate-700 text-slate-400 hover:bg-slate-800`} onClick={resetModel}>
+                  ↺ Reiniciar pesos
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Sobre este modelo</h3>
+              <ul className="text-xs text-slate-400 space-y-1 font-mono">
+                <li>frases de treino: {CORPUS.length}</li>
+                <li>vocabulário: {V - 1} palavras</li>
+                <li>contexto: últimas 2 palavras</li>
+                <li>camada oculta: {H} neurônios</li>
+              </ul>
+              <details className="mt-3">
+                <summary className="text-xs text-cyan-400 cursor-pointer">ver vocabulário completo</summary>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  {VOCAB.words.filter((w) => w !== PAD).join(', ')}
+                </p>
+              </details>
+            </div>
+
+            <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Comece com</h3>
+              <div className="flex flex-wrap gap-1.5">
+                {STARTERS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setPhrase(s)}
+                    className="text-xs px-2 py-1 rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </aside>
+
+          {/* Main */}
+          <div className="flex-1 min-w-0">
+            <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4 mb-4">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 block">Sua frase</label>
+              <input
+                type="text"
+                value={phrase}
+                onChange={(e) => setPhrase(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-100 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                placeholder="digite o início de uma frase..."
+              />
+              <div className="flex items-center gap-2 mt-2 text-xs">
+                <span className="text-slate-500">contexto visto pela rede:</span>
+                <span className={`font-mono px-2 py-0.5 rounded border ${c1known ? 'border-cyan-800 text-cyan-300' : 'border-slate-700 text-slate-500 border-dashed'}`}>{c1word}</span>
+                <span className={`font-mono px-2 py-0.5 rounded border ${c2known ? 'border-cyan-800 text-cyan-300' : 'border-slate-700 text-slate-500 border-dashed'}`}>{c2word}</span>
+                {(!c1known && c1word !== PAD) || (!c2known && c2word !== PAD) ? (
+                  <span className="text-rose-400">palavra fora do vocabulário — ignorada</span>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Próxima palavra provável</h3>
+                <div className="space-y-2">
+                  {topK.map(({ word, prob }) => (
+                    <button
+                      key={word}
+                      onClick={() => appendWord(word)}
+                      className="w-full text-left group focus:outline-none"
+                    >
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="font-mono text-slate-200 group-hover:text-cyan-300">{word}</span>
+                        <span className="font-mono text-slate-500">{(prob * 100).toFixed(1)}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
+                        <div className="h-full bg-cyan-400 rounded-full group-hover:bg-cyan-300 transition-all" style={{ width: `${prob * 100}%` }} />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500 mt-3">Clique numa palavra para acrescentá-la à frase e ver a próxima previsão.</p>
+              </div>
+
+              <div className={`rounded-lg border border-slate-800 bg-slate-900/40 p-2 ${isAutoTraining ? 'animate-pulse' : ''}`}>
+                <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full">
+                  {Array.from({ length: H }).map((_, h) => (
+                    <line key={`e1a-${h}`} x1={chipX + 55} y1={chipY1} x2={hiddenX} y2={hiddenY(h)}
+                      stroke={diverging(modelRef.current.W1[h][c1], 1)} strokeWidth={1}
+                      opacity={Math.min(1, Math.abs(modelRef.current.W1[h][c1])) * 0.7 + 0.05} />
+                  ))}
+                  {Array.from({ length: H }).map((_, h) => (
+                    <line key={`e1b-${h}`} x1={chipX + 55} y1={chipY2} x2={hiddenX} y2={hiddenY(h)}
+                      stroke={diverging(modelRef.current.W1[h][V + c2], 1)} strokeWidth={1}
+                      opacity={Math.min(1, Math.abs(modelRef.current.W1[h][V + c2])) * 0.7 + 0.05} />
+                  ))}
+                  {topWord && Array.from({ length: H }).map((_, h) => (
+                    <line key={`e2-${h}`} x1={hiddenX} y1={hiddenY(h)} x2={outX} y2={outY}
+                      stroke={diverging(modelRef.current.W2[topWord.idx][h], 1)} strokeWidth={1.2}
+                      opacity={Math.min(1, Math.abs(modelRef.current.W2[topWord.idx][h])) * 0.6 + 0.08} />
+                  ))}
+
+                  <rect x={chipX - 55} y={chipY1 - 14} width={110} height={28} rx={6} fill="#0f172a" stroke={c1known ? '#22d3ee' : '#475569'} strokeDasharray={c1known ? '0' : '3,3'} />
+                  <text x={chipX} y={chipY1 + 4} textAnchor="middle" fontSize="11" fontFamily="ui-monospace, monospace" fill="#e2e8f0">{c1word}</text>
+                  <rect x={chipX - 55} y={chipY2 - 14} width={110} height={28} rx={6} fill="#0f172a" stroke={c2known ? '#22d3ee' : '#475569'} strokeDasharray={c2known ? '0' : '3,3'} />
+                  <text x={chipX} y={chipY2 + 4} textAnchor="middle" fontSize="11" fontFamily="ui-monospace, monospace" fill="#e2e8f0">{c2word}</text>
+
+                  {Array.from({ length: H }).map((_, h) => (
+                    <circle key={`h-${h}`} cx={hiddenX} cy={hiddenY(h)} r={9} fill={diverging(hAct[h], 1)} stroke="#475569" strokeWidth={1}>
+                      <title>{`neurônio oculto ${h + 1}: ${hAct[h].toFixed(3)}`}</title>
+                    </circle>
+                  ))}
+
+                  <circle cx={outX} cy={outY} r={26} fill="#0f172a" stroke="#fbbf24" strokeWidth={2} />
+                  <text x={outX} y={outY - 4} textAnchor="middle" fontSize="9" fontFamily="ui-monospace, monospace" fill="#94a3b8">saída</text>
+                  <text x={outX} y={outY + 9} textAnchor="middle" fontSize="9" fontFamily="ui-monospace, monospace" fill="#94a3b8">{V - 1} palavras</text>
+
+                  {topWord && (
+                    <text x={outX} y={outY + 48} textAnchor="middle" fontSize="11" fontFamily="ui-monospace, monospace" fill="#fbbf24">
+                      {topWord.word} · {(topWord.prob * 100).toFixed(0)}%
+                    </text>
+                  )}
+                </svg>
+                <p className="text-xs text-slate-500 px-2 pb-1">
+                  As linhas à esquerda são pesos reais ligando as duas palavras de contexto à camada oculta. As linhas à
+                  direita mostram quais neurônios mais empurram a rede para a palavra em destaque — o restante das
+                  ligações de saída (uma por palavra do vocabulário) fica resumido no nó "saída" por clareza.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<WordPredictionPlayground />);
+</script>
+</body>
+</html>
