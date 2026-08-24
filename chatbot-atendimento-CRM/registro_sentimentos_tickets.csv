@@ -1,0 +1,11 @@
+﻿data_hora,ticket_id,ultimo_status,mensagem_cliente,sentimento_analisado,score_confianca
+2026-08-23 18:28:01,TK-1001,Tratativa em andamento,"Já faz horas que estamos com o link parado e com prejuízo na operação, preciso de urgência!",negativo,0.9926
+2026-08-23 18:28:01,TK-1002,Fechado,"Muito obrigado pelo suporte, a equipe técnica foi excelente e resolveu na hora!",positivo,0.9861
+2026-08-23 18:28:01,TK-1003,Aguardando cliente,Gostaria de saber qual o IP de gateway configurado para eu testar a rota aqui.,neutro,0.983
+2026-08-23 20:25:29,TK-1001,Tratativa em andamento,"Ja faz horas que estamos com o link parado e com prejuizo na operacao, preciso de urgencia!",negativo,0.9644
+2026-08-23 20:25:29,TK-1002,Fechado,"Muito obrigado pelo suporte, a equipe tecnica foi excelente e resolveu na hora!",positivo,0.9737
+2026-08-23 20:25:29,TK-1003,Aguardando cliente,Gostaria de saber qual o IP de gateway configurado para eu testar a rota aqui.,neutro,0.983
+2026-08-23 20:27:02,TK-1001,Tratativa em andamento,"Ja faz horas que estamos com o link parado e com prejuizo na operacao, preciso de urgencia!",negativo,0.9644
+2026-08-23 20:27:02,TK-1002,Fechado,"Muito obrigado pelo suporte, a equipe tecnica foi excelente e resolveu na hora!",positivo,0.9737
+2026-08-23 20:27:02,TK-1003,Aguardando cliente,Gostaria de saber qual o IP de gateway configurado para eu testar a rota aqui.,neutro,0.983
+2026-08-23 20:33:25,TK-1001,Tratativa em andamento,faz tempo que abri o chamado e vcs ainda não resolveram?,negativo,0.9604
