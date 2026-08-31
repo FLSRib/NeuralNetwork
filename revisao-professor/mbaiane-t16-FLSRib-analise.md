@@ -10,7 +10,7 @@ O repositório contém mais 3 pastas (`Neural_Network_Playground`, `mini-llm-lit
 
 ## 1. Abertura
 
-Fabio, parabéns por concluir o projeto! Com 24 anos de experiência em RH, é interessante ver que você escolheu um tema fora da sua área de atuação direta — suporte técnico e NOC de telecom — o que mostra disposição genuína para explorar redes neurais em um contexto novo e tecnicamente exigente. O chatbot de trouble tickets com escalonamento por sentimento é uma ideia de produto bem definida e o fluxo conversacional está claramente pensado; falta agora aterrissar essa ideia em números de negócio e em uma validação mais rigorosa do modelo.
+Fabio, parabéns por concluir o projeto! Como Engenheiro de Telecomunicações e Tech Leader em Inovação e Chaos Engineering, atuando na área de Engenharia e no conselho de IA da empresa, faz todo sentido você ter escolhido justamente automatizar e priorizar trouble tickets — é um problema que você provavelmente vive de perto na operação de NOC/suporte técnico, e a lente de chaos engineering (pensar em falhas, escalonamento e criticidade) aparece na forma como o chatbot prioriza tickets por sentimento. O chatbot de trouble tickets com escalonamento por sentimento é uma ideia de produto bem definida e o fluxo conversacional está claramente pensado; falta agora aterrissar essa ideia em números de negócio e em uma validação mais rigorosa do modelo.
 
 ## 2. Resumo do projeto
 
