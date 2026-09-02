@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playground: Chatbot de Trouble Tickets com Análise de Sentimento (FGV)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .chat-scroll::-webkit-scrollbar { width: 6px; }
+        .chat-scroll::-webkit-scrollbar-track { background: #1e293b; }
+        .chat-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(1.02); }
+        }
+        .pulse-card { animation: pulse-subtle 3s infinite ease-in-out; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Top Header -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap items-center justify-between shadow-lg">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center shadow-md">
+                <i class="fa-solid fa-robot text-white text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold text-white flex items-center gap-2">
+                    NOC Support AI <span class="text-xs font-semibold px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">Playground FGV</span>
+                </h1>
+                <p class="text-xs text-slate-400">Triagem de Trouble Tickets & Análise de Emoção via Redes Neurais (MLP)</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 mt-2 sm:mt-0">
+            <button onclick="resetarTudo()" class="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition flex items-center gap-1.5">
+                <i class="fa-solid fa-rotate-right"></i> Reiniciar Chat
+            </button>
+            <button onclick="exportarCSV()" class="px-3 py-1.5 text-xs font-medium text-emerald-300 hover:text-white bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-700/50 rounded-lg transition flex items-center gap-1.5">
+                <i class="fa-solid fa-file-csv"></i> Exportar CSV de Logs
+            </button>
+        </div>
+    </header>
+
+    <!-- Quick Action Bar -->
+    <div class="bg-slate-900/60 border-b border-slate-800/60 px-6 py-2.5 flex items-center gap-2 overflow-x-auto text-xs text-slate-400">
+        <span class="font-semibold text-slate-300 flex items-center gap-1 shrink-0"><i class="fa-solid fa-bolt text-amber-400"></i> Testes Rápidos:</span>
+        <button onclick="iniciarCenarioRapido('TK-1001', 'Já faz horas que estamos com o link parado e com prejuízo na operação, preciso de urgência!')" class="px-2.5 py-1 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-800/50 rounded-md transition shrink-0">
+            🚨 TK-1001 (Tratativa + Reclamação)
+        </button>
+        <button onclick="iniciarCenarioRapido('TK-1002', 'Muito obrigado pelo suporte, a equipe técnica foi excelente e resolveu na hora!')" class="px-2.5 py-1 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/50 rounded-md transition shrink-0">
+            ✨ TK-1002 (Fechado + Elogio)
+        </button>
+        <button onclick="iniciarCenarioRapido('TK-1003', 'Gostaria de saber qual o IP de gateway configurado para eu testar a rota aqui.')" class="px-2.5 py-1 bg-blue-950/40 hover:bg-blue-900/60 text-blue-300 border border-blue-800/50 rounded-md transition shrink-0">
+            📌 TK-1003 (Aguardando + Dúvida)
+        </button>
+        <button onclick="iniciarCenarioRapido('TK-1004', '')" class="px-2.5 py-1 bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 border border-purple-800/50 rounded-md transition shrink-0">
+            📋 TK-1004 (Aberto + Sem mensagem)
+        </button>
+        <button onclick="iniciarCenarioRapido('TK-9999', 'Alguém pode me ajudar?')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-md transition shrink-0">
+            ❌ TK-9999 (Não encontrado)
+        </button>
+    </div>
+
+    <!-- Main 3-Panel Grid -->
+    <main class="flex-1 p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1800px] w-full mx-auto">
+
+        <!-- PAINEL 1: CHATBOT (5 colunas) -->
+        <section class="lg:col-span-4 flex flex-col bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden h-[750px]">
+            <!-- Chat Header -->
+            <div class="px-4 py-3 bg-slate-800/80 border-b border-slate-700/60 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="relative">
+                        <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                            <i class="fa-solid fa-headset"></i>
+                        </div>
+                        <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-slate-900"></span>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-semibold text-white">Assistente NOC N1</h2>
+                        <p class="text-[11px] text-emerald-400">Online | Pronto para atendimento</p>
+                    </div>
+                </div>
+                <span class="text-xs text-slate-400 font-mono bg-slate-950 px-2 py-1 rounded">Fluxo Ativo</span>
+            </div>
+
+            <!-- Messages Area -->
+            <div id="chatMessages" class="flex-1 p-4 overflow-y-auto space-y-4 chat-scroll">
+                <!-- Messages will be injected via JS -->
+            </div>
+
+            <!-- Typing indicator (hidden by default) -->
+            <div id="typingIndicator" class="hidden px-4 py-2 bg-slate-900/80 text-xs text-slate-400 flex items-center gap-2">
+                <i class="fa-solid fa-ellipsis fa-bounce text-blue-400"></i> Bot está digitando...
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-3 bg-slate-800/50 border-t border-slate-800">
+                <form id="chatForm" onsubmit="enviarMensagem(event)" class="flex gap-2">
+                    <input 
+                        type="text" 
+                        id="chatInput" 
+                        placeholder="Digite o número do ticket ou sua mensagem..." 
+                        class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition placeholder:text-slate-500"
+                        autocomplete="off"
+                    >
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2.5 rounded-xl transition flex items-center justify-center shadow-md">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- PAINEL 2: STATUS DO TROUBLE TICKET (4 colunas) -->
+        <section class="lg:col-span-4 flex flex-col bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden h-[750px]">
+            <div class="px-4 py-3 bg-slate-800/80 border-b border-slate-700/60 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-ticket text-cyan-400"></i>
+                    <h2 class="text-sm font-semibold text-white">Consulta de Trouble Ticket</h2>
+                </div>
+                <span id="badgeTicketHeader" class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Nenhum</span>
+            </div>
+
+            <div class="flex-1 p-5 overflow-y-auto space-y-4 chat-scroll">
+                
+                <!-- Ticket Overview Card -->
+                <div id="ticketCard" class="bg-slate-950 border border-slate-800 rounded-xl p-4 transition-all">
+                    <div class="flex items-center justify-between mb-3">
+                        <span id="cardTicketId" class="text-base font-bold text-white font-mono">TK-XXXX</span>
+                        <span id="cardStatusBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 text-slate-400">
+                            Aguardando Consulta
+                        </span>
+                    </div>
+
+                    <div class="space-y-2.5 text-xs">
+                        <div class="flex justify-between border-b border-slate-900 pb-1.5">
+                            <span class="text-slate-400">Cliente:</span>
+                            <span id="cardCliente" class="font-medium text-slate-200">-</span>
+                        </div>
+                        <div class="flex justify-between border-b border-slate-900 pb-1.5">
+                            <span class="text-slate-400">Serviço Afetado:</span>
+                            <span id="cardServico" class="font-medium text-slate-200">-</span>
+                        </div>
+                        <div class="flex justify-between border-b border-slate-900 pb-1.5">
+                            <span class="text-slate-400">Abertura:</span>
+                            <span id="cardAbertura" class="font-medium text-slate-200 font-mono">-</span>
+                        </div>
+                        <div class="flex justify-between border-b border-slate-900 pb-1.5">
+                            <span class="text-slate-400">Criticidade / SLA:</span>
+                            <span id="cardSLA" class="font-medium text-amber-400 font-mono">4 horas (Alta)</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-900">
+                        <span class="text-xs font-semibold text-slate-400 block mb-1">Última Atualização da Equipe Técnica:</span>
+                        <p id="cardDetalhes" class="text-xs text-slate-300 bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 italic">
+                            Nenhum ticket consultado até o momento.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Status Legend / Quick Guide -->
+                <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
+                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">Guia de Status dos Chamados:</h3>
+                    <div class="grid grid-cols-2 gap-2 text-[11px]">
+                        <div class="p-2 rounded bg-amber-500/10 border border-amber-500/20 text-amber-300">
+                            <span class="font-bold block">Tratativa em andamento</span>
+                            Equipe técnica / NOC atuando no circuito.
+                        </div>
+                        <div class="p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">
+                            <span class="font-bold block">Fechado</span>
+                            Incidente resolvido e testado com sucesso.
+                        </div>
+                        <div class="p-2 rounded bg-blue-500/10 border border-blue-500/20 text-blue-300">
+                            <span class="font-bold block">Aguardando cliente</span>
+                            Pendente validação, teste ou reinício local.
+                        </div>
+                        <div class="p-2 rounded bg-purple-500/10 border border-purple-500/20 text-purple-300">
+                            <span class="font-bold block">Aberto</span>
+                            Chamado na fila de triagem inicial.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Tickets Reference -->
+                <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 text-xs">
+                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Base Cadastrada para Teste:</h3>
+                    <ul class="space-y-1 text-slate-400">
+                        <li><strong class="text-amber-400 font-mono">TK-1001:</strong> Banco Alfa (Link MPLS - Tratativa)</li>
+                        <li><strong class="text-emerald-400 font-mono">TK-1002:</strong> Varejo Global (Core BGP - Fechado)</li>
+                        <li><strong class="text-blue-400 font-mono">TK-1003:</strong> Hospital São Lucas (VPN IPsec - Aguardando)</li>
+                        <li><strong class="text-purple-400 font-mono">TK-1004:</strong> MetalTech (Firewall HA - Aberto)</li>
+                    </ul>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- PAINEL 3: ANÁLISE DE SENTIMENTO & AUDITORIA (4 colunas) -->
+        <section class="lg:col-span-4 flex flex-col bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden h-[750px]">
+            <div class="px-4 py-3 bg-slate-800/80 border-b border-slate-700/60 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-brain text-purple-400"></i>
+                    <h2 class="text-sm font-semibold text-white">Análise de Sentimento (MLP)</h2>
+                </div>
+                <span class="text-xs px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800/50 font-mono">TF-IDF + MLP</span>
+            </div>
+
+            <div class="flex-1 p-5 overflow-y-auto space-y-4 chat-scroll">
+                
+                <!-- Sentiment Meter Box -->
+                <div id="sentimentCard" class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-center">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Emoção / Sentimento Detectado:</span>
+                    <div id="sentimentEmoji" class="text-4xl my-2">⏳</div>
+                    <div id="sentimentLabel" class="text-lg font-bold text-slate-400">Aguardando Mensagem</div>
+                    <p id="sentimentScore" class="text-xs text-slate-500 mt-1 font-mono">Confiança da Rede Neural: --%</p>
+
+                    <!-- Confidence Bars -->
+                    <div class="mt-4 space-y-2 text-left">
+                        <div>
+                            <div class="flex justify-between text-[11px] mb-1">
+                                <span class="text-red-400 font-medium">Negativo (Insatisfação / SLA)</span>
+                                <span id="barScoreNeg" class="text-slate-400 font-mono">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                                <div id="barFillNeg" class="bg-red-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-[11px] mb-1">
+                                <span class="text-emerald-400 font-medium">Positivo (Elogio / Resolução)</span>
+                                <span id="barScorePos" class="text-slate-400 font-mono">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                                <div id="barFillPos" class="bg-emerald-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-[11px] mb-1">
+                                <span class="text-blue-400 font-medium">Neutro (Dúvida Operacional)</span>
+                                <span id="barScoreNeu" class="text-slate-400 font-mono">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                                <div id="barFillNeu" class="bg-blue-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Escalation Alert (Shown only when negative) -->
+                <div id="escalationAlert" class="hidden p-3 bg-red-950/60 border border-red-800 rounded-xl text-xs text-red-200">
+                    <div class="flex items-center gap-2 font-bold text-red-400 mb-1">
+                        <i class="fa-solid fa-triangle-exclamation animate-pulse text-base"></i>
+                        ALERTA DE ESCALONAMENTO NOC N2
+                    </div>
+                    <p class="text-[11px] text-red-300">
+                        Insatisfação/risco de SLA detectado. Chamado colocado na fila prioritária de engenharia de redes.
+                    </p>
+                </div>
+
+                <!-- CSV Audit Log Table -->
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Histórico de Auditoria (CSV):</h3>
+                        <span id="logCountBadge" class="text-[11px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">0 registros</span>
+                    </div>
+
+                    <div class="overflow-x-auto max-h-44 overflow-y-auto chat-scroll border border-slate-900 rounded-lg">
+                        <table class="w-full text-[11px] text-left text-slate-300">
+                            <thead class="bg-slate-900 text-slate-400 font-mono border-b border-slate-800">
+                                <tr>
+                                    <th class="p-1.5">Ticket</th>
+                                    <th class="p-1.5">Status</th>
+                                    <th class="p-1.5">Emoção</th>
+                                    <th class="p-1.5">Score</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableLogBody" class="divide-y divide-slate-900 font-mono">
+                                <tr>
+                                    <td colspan="4" class="p-3 text-center text-slate-600">Nenhum log registrado ainda.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 border-t border-slate-900 px-6 py-3 text-center text-xs text-slate-500">
+        Desenvolvido para o curso de <strong class="text-slate-400">Aplicações de Negócio com Redes Neurais (FGV MBA)</strong>. Todos os dados são gerados sinteticamente.
+    </footer>
+
+    <!-- Interactive JavaScript Engine -->
+    <script>
+        // Database of Trouble Tickets
+        const TICKETS_DB = {
+            "TK-1001": {
+                ticket_id: "TK-1001",
+                cliente: "Banco Alfa S/A",
+                servico_afetado: "Link MPLS Dedicado - Matriz",
+                ultimo_status: "Tratativa em andamento",
+                data_abertura: "2026-08-23 09:15",
+                detalhes: "Equipe de campo acionada para troca de porta óptica no switch de distribuição."
+            },
+            "TK-1002": {
+                ticket_id: "TK-1002",
+                cliente: "Varejo Global Logística",
+                servico_afetado: "Roteador Core BGP - Filial Campinas",
+                ultimo_status: "Fechado",
+                data_abertura: "2026-08-22 14:30",
+                detalhes: "Sessão BGP restabelecida após normalização de operadora parceira. Testes concluídos com sucesso."
+            },
+            "TK-1003": {
+                ticket_id: "TK-1003",
+                cliente: "Hospital São Lucas",
+                servico_afetado: "Conexão VPN IPsec Site-to-Site",
+                ultimo_status: "Aguardando cliente",
+                data_abertura: "2026-08-23 11:00",
+                detalhes: "Aguardando teste de ping do cliente e validação da chave pré-compartilhada (PSK)."
+            },
+            "TK-1004": {
+                ticket_id: "TK-1004",
+                cliente: "Indústria MetalTech",
+                servico_afetado: "Firewall Principal - Cluster HA",
+                ultimo_status: "Aberto",
+                data_abertura: "2026-08-23 16:45",
+                detalhes: "Chamado aberto via monitoramento automático de CPU acima de 95%."
+            },
+            "TK-1005": {
+                ticket_id: "TK-1005",
+                cliente: "E-commerce Brasil",
+                servico_afetado: "Link de Internet Redundante",
+                ultimo_status: "Tratativa em andamento",
+                data_abertura: "2026-08-23 13:20",
+                detalhes: "Análise de perda de pacotes e latência intermitente pela equipe de NOC N2."
+            }
+        };
+
+        // NLP Sentiment Dictionaries & Weights
+        const PALAVRAS_NEGATIVAS = [
+            "parado", "parada", "fora do ar", "demora", "insatisfeito", "ninguem", "ninguém", "urgencia", "urgência", 
+            "prejuizo", "prejuízo", "queda", "travou", "decepcionado", "cancelar", "pessimo", "péssimo", "lento", 
+            "lentidão", "lentidao", "horas", "problema", "erro", "sla", "reclamação", "vergonha", "ruim", "estourado"
+        ];
+        const PALAVRAS_POSITIVAS = [
+            "obrigado", "excelente", "rapido", "rápido", "atenciosa", "atencioso", "parabens", "parabéns", "agilidade", 
+            "satisfeito", "perfeito", "recomendo", "normalizado", "feliz", "ótimo", "otimo", "nota dez", "resolvido", 
+            "parabens", "adorei", "agradeço", "agradeco", "show", "top"
+        ];
+        const PALAVRAS_NEUTRAS = [
+            "ip", "gateway", "previsao", "previsão", "manutencao", "manutenção", "janela", "procedimento", "horario", 
+            "horário", "asn", "bgp", "vpn", "relatorio", "relatório", "log", "e-mail", "contato", "status", "prazo", "saber"
+        ];
+
+        let estadoConversa = {
+            etapa: "pedir_ticket", // "pedir_ticket" | "aguardando_mensagem_adicional"
+            ticketAtual: null,
+            logsAuditoria: []
+        };
+
+        // Initialize Chat
+        window.onload = function() {
+            adicionarMensagemBot("Olá! Bem-vindo ao Autoatendimento do NOC & Suporte Técnico Corporativo.\n\nPor favor, informe o **número do Trouble Ticket** em aberto (ex: `TK-1001`, `TK-1002`...):");
+        };
+
+        function normalizarTicketId(input) {
+            let clean = input.trim().toUpperCase();
+            if (!clean.startsWith("TK-")) {
+                if (clean.startsWith("TK")) {
+                    clean = "TK-" + clean.substring(2).replace(/^-+/, '');
+                } else {
+                    clean = "TK-" + clean;
+                }
+            }
+            return clean;
+        }
+
+        function adicionarMensagemBot(texto) {
+            const chat = document.getElementById("chatMessages");
+            const div = document.createElement("div");
+            div.className = "flex gap-2.5 items-start";
+            
+            // Format markdown-like bold and code
+            let formatted = texto.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            formatted = formatted.replace(/`(.*?)`/g, '<code class="bg-slate-800 text-cyan-400 px-1 py-0.5 rounded font-mono text-[11px]">$1</code>');
+            formatted = formatted.replace(/\n/g, '<br>');
+
+            div.innerHTML = `
+                <div class="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs shrink-0 mt-0.5">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div class="bg-slate-800 text-slate-100 px-3.5 py-2.5 rounded-2xl rounded-tl-sm text-xs leading-relaxed max-w-[85%] border border-slate-700/60 shadow-sm">
+                    ${formatted}
+                </div>
+            `;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function adicionarMensagemUsuario(texto) {
+            const chat = document.getElementById("chatMessages");
+            const div = document.createElement("div");
+            div.className = "flex gap-2.5 items-start justify-end";
+            div.innerHTML = `
+                <div class="bg-blue-600 text-white px-3.5 py-2.5 rounded-2xl rounded-tr-sm text-xs leading-relaxed max-w-[85%] shadow-sm font-medium">
+                    ${texto}
+                </div>
+                <div class="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-white text-xs shrink-0 mt-0.5">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+            `;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function classificarSentimentoTexto(texto) {
+            const t = texto.toLowerCase();
+            let scoreNeg = 0;
+            let scorePos = 0;
+            let scoreNeu = 0;
+
+            PALAVRAS_NEGATIVAS.forEach(p => { if (t.includes(p)) scoreNeg += 2.2; });
+            PALAVRAS_POSITIVAS.forEach(p => { if (t.includes(p)) scorePos += 2.2; });
+            PALAVRAS_NEUTRAS.forEach(p => { if (t.includes(p)) scoreNeu += 1.5; });
+
+            if (scoreNeg === 0 && scorePos === 0 && scoreNeu === 0) {
+                scoreNeu = 1.0;
+            }
+
+            // Softmax calculation
+            const expNeg = Math.exp(scoreNeg);
+            const expPos = Math.exp(scorePos);
+            const expNeu = Math.exp(scoreNeu);
+            const sum = expNeg + expPos + expNeu;
+
+            const pNeg = expNeg / sum;
+            const pPos = expPos / sum;
+            const pNeu = expNeu / sum;
+
+            let pred = "neutro";
+            let maxP = pNeu;
+
+            if (pNeg > maxP) { pred = "negativo"; maxP = pNeg; }
+            if (pPos > maxP) { pred = "positivo"; maxP = pPos; }
+
+            return {
+                sentimento: pred,
+                confianca: maxP,
+                pNeg: pNeg,
+                pPos: pPos,
+                pNeu: pNeu
+            };
+        }
+
+        function atualizarPainelTicket(ticket) {
+            const badgeH = document.getElementById("badgeTicketHeader");
+            const cardId = document.getElementById("cardTicketId");
+            const cardStatus = document.getElementById("cardStatusBadge");
+            const cardCli = document.getElementById("cardCliente");
+            const cardServ = document.getElementById("cardServico");
+            const cardAbert = document.getElementById("cardAbertura");
+            const cardDet = document.getElementById("cardDetalhes");
+
+            if (!ticket) {
+                badgeH.innerText = "Não Localizado";
+                badgeH.className = "text-xs px-2 py-0.5 rounded bg-red-950 text-red-400 font-mono border border-red-800/50";
+                cardId.innerText = "TK-404";
+                cardStatus.innerText = "Não Encontrado";
+                cardStatus.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-red-900/60 text-red-300 border border-red-700";
+                cardCli.innerText = "Desconhecido";
+                cardServ.innerText = "Não localizado na base ativa";
+                cardAbert.innerText = "--";
+                cardDet.innerText = "Chamado não cadastrado no sistema. Verifique o número digitado.";
+                return;
+            }
+
+            badgeH.innerText = ticket.ticket_id;
+            badgeH.className = "text-xs px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 font-mono border border-cyan-800/50";
+            cardId.innerText = ticket.ticket_id;
+            cardCli.innerText = ticket.cliente;
+            cardServ.innerText = ticket.servico_afetado;
+            cardAbert.innerText = ticket.data_abertura;
+            cardDet.innerText = ticket.detalhes;
+
+            // Status Styling
+            cardStatus.innerText = ticket.ultimo_status.toUpperCase();
+            if (ticket.ultimo_status === "Tratativa em andamento") {
+                cardStatus.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-amber-900/60 text-amber-300 border border-amber-700 pulse-card";
+            } else if (ticket.ultimo_status === "Fechado") {
+                cardStatus.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-700";
+            } else if (ticket.ultimo_status === "Aguardando cliente") {
+                cardStatus.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-blue-900/60 text-blue-300 border border-blue-700";
+            } else { // Aberto
+                cardStatus.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-purple-900/60 text-purple-300 border border-purple-700";
+            }
+        }
+
+        function atualizarPainelSentimento(resultado) {
+            const card = document.getElementById("sentimentCard");
+            const emoji = document.getElementById("sentimentEmoji");
+            const label = document.getElementById("sentimentLabel");
+            const score = document.getElementById("sentimentScore");
+            const alertBox = document.getElementById("escalationAlert");
+
+            document.getElementById("barScoreNeg").innerText = `${(resultado.pNeg * 100).toFixed(1)}%`;
+            document.getElementById("barFillNeg").style.width = `${(resultado.pNeg * 100).toFixed(1)}%`;
+
+            document.getElementById("barScorePos").innerText = `${(resultado.pPos * 100).toFixed(1)}%`;
+            document.getElementById("barFillPos").style.width = `${(resultado.pPos * 100).toFixed(1)}%`;
+
+            document.getElementById("barScoreNeu").innerText = `${(resultado.pNeu * 100).toFixed(1)}%`;
+            document.getElementById("barFillNeu").style.width = `${(resultado.pNeu * 100).toFixed(1)}%`;
+
+            score.innerText = `Confiança da Rede Neural: ${(resultado.confianca * 100).toFixed(1)}%`;
+
+            if (resultado.sentimento === "negativo") {
+                emoji.innerText = "😡";
+                label.innerText = "NEGATIVO (Crítico / Reclamação)";
+                label.className = "text-lg font-bold text-red-400";
+                card.className = "bg-red-950/20 border border-red-800/80 rounded-xl p-4 text-center";
+                alertBox.classList.remove("hidden");
+            } else if (resultado.sentimento === "positivo") {
+                emoji.innerText = "😊";
+                label.innerText = "POSITIVO (Elogio / Satisfeito)";
+                label.className = "text-lg font-bold text-emerald-400";
+                card.className = "bg-emerald-950/20 border border-emerald-800/80 rounded-xl p-4 text-center";
+                alertBox.classList.add("hidden");
+            } else {
+                emoji.innerText = "😐";
+                label.innerText = "NEUTRO (Dúvida Operacional)";
+                label.className = "text-lg font-bold text-blue-400";
+                card.className = "bg-blue-950/20 border border-blue-800/80 rounded-xl p-4 text-center";
+                alertBox.classList.add("hidden");
+            }
+        }
+
+        function registrarLogTabela(ticketId, status, mensagem, sentimento, confianca) {
+            const dataHora = new Date().toISOString().replace('T', ' ').substring(0, 19);
+            const registro = {
+                data_hora: dataHora,
+                ticket_id: ticketId,
+                ultimo_status: status,
+                mensagem_cliente: mensagem,
+                sentimento_analisado: sentimento,
+                score_confianca: confianca.toFixed(4)
+            };
+
+            estadoConversa.logsAuditoria.push(registro);
+
+            document.getElementById("logCountBadge").innerText = `${estadoConversa.logsAuditoria.length} registros`;
+            const tbody = document.getElementById("tableLogBody");
+            
+            if (estadoConversa.logsAuditoria.length === 1) {
+                tbody.innerHTML = "";
+            }
+
+            const tr = document.createElement("tr");
+            let badgeClass = "text-blue-400";
+            if (sentimento === "negativo") badgeClass = "text-red-400 font-bold";
+            if (sentimento === "positivo") badgeClass = "text-emerald-400 font-bold";
+
+            tr.innerHTML = `
+                <td class="p-1.5 font-bold text-white">${ticketId}</td>
+                <td class="p-1.5 text-slate-400">${status}</td>
+                <td class="p-1.5 ${badgeClass}">${sentimento.toUpperCase()}</td>
+                <td class="p-1.5 text-slate-400">${(confianca * 100).toFixed(1)}%</td>
+            `;
+            tbody.prepend(tr);
+        }
+
+        function enviarMensagem(event) {
+            if (event) event.preventDefault();
+            const input = document.getElementById("chatInput");
+            const texto = input.value.trim();
+            if (!texto) return;
+
+            input.value = "";
+            adicionarMensagemUsuario(texto);
+
+            // Chatbot state logic
+            if (estadoConversa.etapa === "pedir_ticket") {
+                const cleanId = normalizarTicketId(texto);
+                const ticket = TICKETS_DB[cleanId];
+
+                if (!ticket) {
+                    atualizarPainelTicket(null);
+                    adicionarMensagemBot(`❌ Não localizamos o Trouble Ticket **${cleanId}** em nossa base ativa.\n\nPor favor, confira o identificador ou entre em contato com a Central do NOC.`);
+                    return;
+                }
+
+                estadoConversa.ticketAtual = ticket;
+                atualizarPainelTicket(ticket);
+
+                adicionarMensagemBot(`✅ Ticket **${ticket.ticket_id}** localizado com sucesso!\n` +
+                    `• **Cliente:** ${ticket.cliente}\n` +
+                    `• **Serviço Afetado:** ${ticket.servico_afetado}\n` +
+                    `• **ÚLTIMO STATUS:** [**${ticket.ultimo_status.toUpperCase()}**]\n` +
+                    `• **Detalhes da Equipe:** ${ticket.detalhes}\n\n` +
+                    `**Deseja algo mais ou tem alguma observação/dúvida sobre este ticket?**`
+                );
+
+                estadoConversa.etapa = "aguardando_mensagem_adicional";
+
+            } else if (estadoConversa.etapa === "aguardando_mensagem_adicional") {
+                const ticket = estadoConversa.ticketAtual;
+                const analise = classificarSentimentoTexto(texto);
+
+                atualizarPainelSentimento(analise);
+                registrarLogTabela(ticket.ticket_id, ticket.ultimo_status, texto, analise.sentimento, analise.confianca);
+
+                if (analise.sentimento === "negativo") {
+                    adicionarMensagemBot(`⚠️ Sentimos muito pelo transtorno! Identificamos criticidade na sua mensagem (Sentimento: **NEGATIVO** | Confiança: **${(analise.confianca*100).toFixed(1)}%**).\n\n🚨 **Acionamos protocolo de ESCALONAMENTO prioritário para o NOC Nível 2** para agilizar a tratativa do seu chamado **${ticket.ticket_id}**.`);
+                } else if (analise.sentimento === "positivo") {
+                    adicionarMensagemBot(`✨ Ficamos muito felizes com seu retorno positivo! (Sentimento: **POSITIVO** | Confiança: **${(analise.confianca*100).toFixed(1)}%**).\n\nAgradecemos a confiança no suporte técnico. Conte sempre com a nossa equipe!`);
+                } else {
+                    adicionarMensagemBot(`📌 Anotamos sua observação operacional (Sentimento: **NEUTRO** | Confiança: **${(analise.confianca*100).toFixed(1)}%**).\n\nSua solicitação foi anexada ao histórico do chamado **${ticket.ticket_id}**.`);
+                }
+
+                adicionarMensagemBot(`📁 *Interação e sentimento gravados no log de auditoria CSV.*\n\nPosso ajudar com outro chamado? Digite o número do novo ticket ou reinicie o chat.`);
+                estadoConversa.etapa = "pedir_ticket";
+                estadoConversa.ticketAtual = null;
+            }
+        }
+
+        function iniciarCenarioRapido(ticketId, mensagem) {
+            resetarTudo();
+            setTimeout(() => {
+                document.getElementById("chatInput").value = ticketId;
+                enviarMensagem();
+                if (mensagem) {
+                    setTimeout(() => {
+                        document.getElementById("chatInput").value = mensagem;
+                        enviarMensagem();
+                    }, 600);
+                }
+            }, 200);
+        }
+
+        function resetarTudo() {
+            document.getElementById("chatMessages").innerHTML = "";
+            document.getElementById("chatInput").value = "";
+            estadoConversa.etapa = "pedir_ticket";
+            estadoConversa.ticketAtual = null;
+            atualizarPainelTicket(null);
+            
+            // Reset sentiment card
+            document.getElementById("sentimentEmoji").innerText = "⏳";
+            document.getElementById("sentimentLabel").innerText = "Aguardando Mensagem";
+            document.getElementById("sentimentLabel").className = "text-lg font-bold text-slate-400";
+            document.getElementById("sentimentScore").innerText = "Confiança da Rede Neural: --%";
+            document.getElementById("barScoreNeg").innerText = "0%";
+            document.getElementById("barFillNeg").style.width = "0%";
+            document.getElementById("barScorePos").innerText = "0%";
+            document.getElementById("barFillPos").style.width = "0%";
+            document.getElementById("barScoreNeu").innerText = "0%";
+            document.getElementById("barFillNeu").style.width = "0%";
+            document.getElementById("escalationAlert").classList.add("hidden");
+            document.getElementById("sentimentCard").className = "bg-slate-950 border border-slate-800 rounded-xl p-4 text-center";
+
+            adicionarMensagemBot("Olá! Bem-vindo ao Autoatendimento do NOC & Suporte Técnico Corporativo.\n\nPor favor, informe o **número do Trouble Ticket** em aberto (ex: `TK-1001`, `TK-1002`...):");
+        }
+
+        function exportarCSV() {
+            if (estadoConversa.logsAuditoria.length === 0) {
+                alert("Nenhum log registrado para exportar no momento. Teste algumas interações primeiro!");
+                return;
+            }
+            let csv = "data_hora,ticket_id,ultimo_status,mensagem_cliente,sentimento_analisado,score_confianca\n";
+            estadoConversa.logsAuditoria.forEach(l => {
+                const msgEscaped = `"${l.mensagem_cliente.replace(/"/g, '""')}"`;
+                csv += `${l.data_hora},${l.ticket_id},${l.ultimo_status},${msgEscaped},${l.sentimento_analisado},${l.score_confianca}\n`;
+            });
+            const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "registro_sentimentos_tickets.csv";
+            link.click();
+        }
+    </script>
+</body>
+</html>

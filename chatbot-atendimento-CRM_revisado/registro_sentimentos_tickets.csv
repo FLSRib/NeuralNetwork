@@ -1,0 +1,4 @@
+﻿data_hora,ticket_id,ultimo_status,mensagem_cliente,sentimento_analisado,score_confianca
+2026-08-31 17:50:38,TK-1001,Tratativa em andamento,"Já faz horas que estamos com o link parado e com prejuízo na operação, preciso de urgência!",negativo,0.7473
+2026-08-31 17:50:38,TK-1002,Fechado,"Muito obrigado pelo suporte, a equipe técnica foi excelente e resolveu na hora!",positivo,0.8888
+2026-08-31 17:50:38,TK-1003,Aguardando cliente,Gostaria de saber qual o IP de gateway configurado para eu testar a rota aqui.,neutro,0.8089
