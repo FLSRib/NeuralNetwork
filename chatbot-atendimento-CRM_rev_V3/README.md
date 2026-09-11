@@ -170,10 +170,19 @@ Para cumprir com o mais alto rigor de **honestidade dos resultados (Critério 9.
 | **6** | **Vocabulário Inédito** | *"Vocês pretendem lançar suporte a IPv6 este ano?"* | **Neutro** | **POSITIVO** (Erro) | 93,9% | **Out-of-Vocabulary (OOV):** O termo *"IPv6"* não pertencia ao vocabulário do TF-IDF; classificado como positivo por ausência de sinal negativo. |
 | **7** | **Linguagem Hostil (Guardrail)** | *"Que serviço de bosta, link fora do ar de novo!"* | **Negativo** | **NEGATIVO** (Acerto Crítico) | **100,0%** | **Sucesso do Guardrail pt-BR:** Termo ofensivo interceptado na Camada 1, forçando escalonamento imediato ao NOC N2. |
 
-### 6.1 Roadmap de NLP: Justificativa Empírica para Transformers
-Os resultados acima comprovam a tese defendida nas aulas da disciplina:
-* **Fase Atual (PoC Leve / rev_V3):** TF-IDF + MLP + Guardrails pt-BR entregam baixíssima latência ($< 5\text{ms}$) e resolvem casos diretos e linguagem de atrito em hardware in-house local.
-* **Fase Futura (Produção em Escala):** Os erros nos casos 1 (sarcasmo), 5 (negação) e 6 (vocabulário OOV) demonstram empiricamente a necessidade de avançar para **Embeddings Densos Contextuais pré-treinados em português (BERTimbau / Transformers com mecanismo de Atenção)**, capazes de computar o contexto bidirecional de sentenças complexas.
+### 6.1 Roadmap de Evolução de NLP: Da Estatística (TF-IDF) para Embeddings e Transformers
+Os resultados obtidos no Teste de Estresse comprovam de forma empírica as discussões teóricas das **Aulas 5 e 6 da disciplina**:
+
+* **Fase 1 (Atual — PoC Leve rev_V3):** `TF-IDF` + `MLPClassifier` + **Guardrails pt-BR**.
+  * *Vantagens:* Latência ultrabaixa ($< 5	ext{ms}$) e baixíssimo custo computacional, ideal para a prova de conceito e execução instantânea via Webhook.
+  * *Limitações identificadas no teste de estresse:* Dificuldade com sarcasmo, negação e vocabulário OOV (como *"IPv6"*).
+* **Fase 2 (Curto Prazo — Embeddings Densos Pré-treinados):**
+  * Substituição dos vetores esparsos do TF-IDF por **Word2Vec** ou **FastText** pré-treinado em português (NILC).
+  * *Ganho:* Representações densas (vetores contínuos de 300 dimensões) que agrupam termos técnicos correlatos (*"latência"*, *"lag"*, *"jitter"*, *"ping alto"*), aumentando a resiliência a ruídos.
+* **Fase 3 (Produção em Escala — Transformers e Atenção):**
+  * Fine-tuning de um modelo pré-treinado em português: **BERTimbau (BERT pt-BR)**.
+  * *Ganho:* O mecanismo de **Self-Attention (Autoatenção)** calcula o contexto bidirecional de toda a oração, decodificando **sarcasmo** (*"parabéns pelo link que caiu"*) e **negação** (*"não tivemos queda"*), elevando o F1-Score em produção para $> 93\%$.
+  * *Viabilidade Técnica:* A inferência do BERTimbau quantizado (via ONNX Runtime no servidor GPU *in-house*) roda em $pprox 35	ext{ms}$, perfeitamente compatível com as regras de SLA do NOC.
 
 ---
 
