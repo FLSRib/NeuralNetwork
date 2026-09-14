@@ -64,26 +64,26 @@ flowchart TD
     AskTicket --> InputTicket["👤 Cliente: Informa Ticket"]
     
     InputTicket --> QueryDB{"🔍 Consultar Base de Tickets"}
-    QueryDB -->|❌ Não Encontrado| NotFound["🤖 Bot: Ticket não localizado. Encaminha NOC Central."]
+    QueryDB -->|Nao Encontrado| NotFound["🤖 Bot: Ticket não localizado. Encaminha NOC Central."]
     NotFound --> EndNotFound(["🛑 Fim"])
     
-    QueryDB -->|✅ Localizado| ShowStatus["🤖 Bot: Exibe Cliente, Serviço e Último Status:<br/>• Aberto / Fechado / Aguardando / Em Andamento"]
+    QueryDB -->|Localizado| ShowStatus["🤖 Bot: Exibe Cliente, Serviço e Último Status:<br/>• Aberto / Fechado / Aguardando / Em Andamento"]
     ShowStatus --> AskMore["🤖 Bot: 'Deseja algo mais ou tem alguma observação?'"]
     
     AskMore --> CheckInput{"👤 Mensagem adicional enviada?"}
-    CheckInput -->|Não| EndOk["🤖 Bot: Finaliza atendimento com sucesso"]
+    CheckInput -->|Nao| EndOk["🤖 Bot: Finaliza atendimento com sucesso"]
     EndOk --> Finish(["🏁 Fim"])
     
     CheckInput -->|Sim| Guardrail{"🛡️ Camada 1: Guardrail pt-BR<br/>(Termo ofensivo detectado?)"}
     
-    Guardrail -->|Sim (Palavrão)| ForceNeg["🚨 Gatilho Crítico de Emergência<br/>Sentimento: NEGATIVO (Confiança: 100%)"]
+    Guardrail -->|Palavrao detectado| ForceNeg["🚨 Gatilho Crítico de Emergência<br/>Sentimento: NEGATIVO (Confiança: 100%)"]
     
-    Guardrail -->|Não| Vectorize["🔤 Camada 2: Vetorização TF-IDF"]
+    Guardrail -->|Nao| Vectorize["🔤 Camada 2: Vetorização TF-IDF"]
     Vectorize --> NNPredict["🧠 Inferência com Rede Neural (MLP)"]
     NNPredict --> ThresholdCheck{"p(negativo) >= 0.30?"}
     
     ThresholdCheck -->|Sim| RespNeg["🤖 Bot: Alerta de insatisfação<br/>🚨 Escalonamento prioritário ao NOC N2 (Hypercare)"]
-    ThresholdCheck -->|Não| MaxClass{"Classe mais provável"}
+    ThresholdCheck -->|Nao| MaxClass{"Classe mais provável"}
     
     MaxClass -->|Positivo| RespPos["🤖 Bot: Confirmação de encerramento com satisfação"]
     MaxClass -->|Neutro| RespNeu["🤖 Bot: Anexo da dúvida/solicitação técnica ao chamado"]
