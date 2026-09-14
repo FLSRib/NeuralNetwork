@@ -1,9 +1,5 @@
-﻿data_hora,ticket_id,ultimo_status,mensagem_cliente,sentimento_analisado,score_confianca,motivo_classificacao
+data_hora,ticket_id,ultimo_status,mensagem_cliente,sentimento_analisado,score_confianca,motivo_classificacao
 2026-09-11 18:00:20,TK-1001,Tratativa em andamento,"O link continua fora do ar e a empresa está parada, prejuízo total!",negativo,0.9721,IA: Limiar de Recall prioritário (Negativo >= 30%)
 2026-09-11 18:00:20,TK-1001,Tratativa em andamento,"Que serviço de bosta, link fora do ar de novo porra!",negativo,1.0,Guardrail Crítico: Termo ofensivo detectado ('porra')
 2026-09-11 18:00:20,TK-1002,Fechado,"Muito obrigado pelo suporte, a equipe técnica foi excelente e resolveu na hora!",positivo,0.9982,IA: Predição padrão por máxima verossimilhança
 2026-09-11 18:00:20,TK-1003,Aguardando cliente,Gostaria de saber qual o IP de gateway configurado para eu testar a rota aqui.,neutro,0.997,IA: Predição padrão por máxima verossimilhança
-2026-09-11 18:12:22,TK-1001,Tratativa em andamento,"O link continua fora do ar e a empresa está parada, prejuízo total!",negativo,0.9705,IA: Calibração de Recall (Negativo >= 30%)
-2026-09-11 18:12:22,TK-1001,Tratativa em andamento,"Que serviço de bosta, link fora do ar de novo porra!",negativo,1.0,Guardrail Crítico: Linguagem ofensiva ('porra')
-2026-09-11 18:12:22,TK-1002,Fechado,"Muito obrigado pelo suporte, a equipe resolveu rápido e funcionou perfeitamente!",positivo,0.9975,IA: Máxima Verossimilhança
-2026-09-11 18:12:22,TK-1003,Aguardando cliente,Gostaria de saber qual o IP de gateway configurado para eu testar a rota aqui.,neutro,0.997,IA: Máxima Verossimilhança

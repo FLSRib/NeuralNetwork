@@ -113,6 +113,7 @@ chatbot-atendimento-CRM_rev_V4/
 │
 ├── 04-chatbot-trouble-tickets-sentimento.ipynb   # Notebook principal: treino, validação, provas empíricas
 ├── chatbot_tickets.py                            # Script CLI / Interativo self-contained
+├── generate_rev_v3_artifacts.py                  # Módulo de curadoria das frases-base e expansão sintética
 ├── registro_sentimentos_tickets.csv              # Log de auditoria persistido com motivo da decisão
 ├── README.md                                     # Este documento
 ├── requirements.txt                              # Dependências com versões estritas
@@ -158,12 +159,17 @@ Esta versão elimina estruturalmente ambos os problemas:
 
 ### 📊 Comparação Metodológica: Validação Ingênua vs. Validação Rigorosa
 
-| Métrica / Cenário | Validação Ingênua (versão anterior com vazamento) | Validação Rigorosa (GroupKFold + Pipeline) | Interpretação Científica |
+| Métrica / Cenário | Validação Ingênua (versão v2 com vazamento) | Validação Rigorosa (GroupKFold + Pipeline) | Interpretação Científica |
 | :--- | :---: | :---: | :--- |
 | **Acurácia no Teste Inédito** | **100,0%** (1.0000) | **69,4%** (0.6941) | O modelo avalia frases com núcleos semânticos 100% novos. |
 | **Acurácia Média no 5-Fold** | **100,0%** (1.0000) | **78,8%** (0.7877) | Performance real de generalização em ambiente corporativo. |
 | **Desvio Padrão ($\sigma$) no 5-Fold** | **0,0000** (impossível) | **0,0657** (realista) | Confirma que o modelo é sensível a variações semânticas reais. |
 | **Baseline Regressão Logística** | 99,7% ($\sigma$=0.0053) | **78,4%** ($\sigma$=0.0474) | O MLP supera o baseline linear em capacidade de abstração. |
+
+> [!NOTE]
+> **Rastreabilidade de Evolução do Projeto:**
+> - Na versão intermediária **`rev_V3`**, foi realizada a reestruturação metodológica completa do pipeline: eliminação do vazamento por quase-duplicidade (split prévio das 195 frases-base com `assert sobreposição == 0`), encapsulamento em `Pipeline` no `GroupKFold`, introdução do **Guardrail determinístico pt-BR** e transparência total dos 7 casos no teste de estresse.
+> - Na versão atual **`rev_V4`**, o projeto avança para além da validação técnica com a **prova empírica da necessidade de IA (Seção 6)**, comparando o modelo contra um classificador determinístico por regras nas personas reais de NOC, demonstrando a superioridade no *Recall* da classe crítica.
 
 > [!NOTE]
 > A queda dos 100% irreais para a faixa de **~69%–79%** reflete a transição de um modelo que decorava templates para um **modelo com capacidade real de generalização** — consistente com a auditoria independente do professor, que encontrou MLP ≈ 75,2% e LR ≈ 71,2% usando a mesma metodologia rigorosa.
