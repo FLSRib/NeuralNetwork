@@ -186,9 +186,14 @@ O projeto passou por um processo contínuo e rigoroso de auditoria e revisão ci
 > 1. **Reprodutibilidade Intra-Máquina (Bit-Idêntica):** Com o pin estrito de versões no `requirements.txt` (`scikit-learn==1.3.2`, `scipy==1.11.4`, `numpy==1.24.3`) e a fixação de `RANDOM_STATE = 42`, reexecuções consecutivas na **mesma máquina** produzem resultados **100% bit-a-bit idênticos** (confirmado em testes repetidos em ambientes virtuais limpos).
 > 
 > 2. **Variação Cross-Platform (Entre Máquinas e Sistemas Operacionais Distintos):**
->    Ao executar este mesmo código em hardwares e sistemas operacionais diferentes (por exemplo, ambiente do autor em **Windows x86_64** vs. ambiente do avaliador em **macOS ARM64/Apple Silicon**), os valores exatos de acurácia e desvio-padrão apresentam pequenas flutuações numéricas:
->    * **Ambiente de Desenvolvimento (Windows x86_64):** Teste MLP = 69,4% | CV 5-Fold = 78,8% ($\sigma$ = 0,0657) | LR CV = 78,4%.
->    * **Ambiente de Auditoria Independente (macOS ARM64):** Teste MLP = 74,9% a 76,1% | CV 5-Fold = 81,0% a 82,0%.
+>    Ao executar este mesmo código em hardwares e sistemas operacionais diferentes (por exemplo, ambiente de desenvolvimento em **Windows x86_64** vs. ambiente de auditoria independente em **macOS ARM64/Apple Silicon**), ocorrem variações numéricas tanto em nível agregado quanto em instâncias individuais:
+>    * **Nível Agregado (Métricas Gerais):**
+>      * *Windows x86_64 (Desenvolvimento):* Teste MLP = 69,4% | CV 5-Fold = 78,8% ($\sigma$ = 0,0657) | LR CV = 78,4%.
+>      * *macOS ARM64 (Auditoria Independente):* Teste MLP = 74,9% a 76,1% | CV 5-Fold = 81,0% a 82,0% ($\sigma$ = 0,0556).
+>    * **Nível Individual (Teste de Estresse - Seção 7):**
+>      * A contagem agregada de robustez mantém-se estável nas duas plataformas (**3 acertos e 4 erros**).
+>      * Contudo, em decorrência dos mínimos locais ligeiramente distintos encontrados pelo `Adam`, a fronteira de decisão oscila em frases limítrofes: no ambiente Windows, o Caso 2 (*mensagem mista*) é classificado como NEGATIVO (80,7% - acerto via threshold) e o Caso 4 (*latência core*) como NEGATIVO (36,5% - falso positivo por zelo); já na reexecução em macOS, o Caso 2 converge para POSITIVO (95,0%) e o Caso 4 para NEUTRO (82,1% - acerto).
+>      * Essa constatação empírica reforça que a robustez caso-a-caso de modelos rasos (TF-IDF + MLP) em sentenças não-vistas é sensível à convergência da plataforma, evidenciando mais uma vez a necessidade da evolução arquitetural para Transformers/BERTimbau com pesos pré-treinados fixos (Fase 3 do Roadmap).
 >
 > 3. **Por que isso ocorre? (Fundamento Teórico):**
 >    Essa divergência não decorre de sementes soltas ou fabricação de dados, mas sim de uma limitação estrutural da computação numérica em redes neurais:
@@ -243,6 +248,9 @@ Reportamos abaixo **a totalidade dos casos de teste de estresse** avaliados no n
 | **7** | **Linguagem Hostil (Guardrail)** | *"Que serviço de bosta, link fora do ar de novo!"* | Negativo | **NEGATIVO** ✓ | **100,0%** | **Sucesso do Guardrail pt-BR:** termo ofensivo interceptado na Camada 1, escalonamento imediato ao N2. |
 
 **Resumo:** 3 acertos, 4 erros — o modelo acerta onde importa para o negócio (mensagem mista, gíria ruidosa, linguagem hostil) e falha nos limites estruturais do TF-IDF (sarcasmo, negação, OOV), que justificam empiricamente o Roadmap de NLP abaixo.
+
+> [!NOTE]
+> **Nota de Validação Cruzada entre Plataformas (Auditoria macOS vs. Windows):** Conforme detalhado na [Seção 5.1](#51-nota-fundamental-sobre-reprodutibilidade-cross-platform-hardware--os--blas--adam), a taxa agregada (3 acertos / 4 erros) permanece idêntica entre sistemas operacionais, mas os vereditos pontuais dos casos 2 e 4 oscilam devido a variações de convergência numérica do otimizador Adam entre bibliotecas BLAS (OpenBLAS vs. Apple Accelerate). Em qualquer ambiente, os pesos congelados de produção em `model_weights_v5.json` e `playground.html` garantem inferência 100% determinística.
 
 ---
 
